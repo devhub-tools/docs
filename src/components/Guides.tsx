@@ -3,23 +3,23 @@ import { Heading } from '@/components/Heading'
 
 const guides = [
   {
-    href: '/authentication',
+    href: '/guides/authentication',
     name: 'Authentication',
     description: 'Learn how to authenticate your API requests.',
   },
   {
-    href: '/terraform',
+    href: '/guides/terraform',
     name: 'Terraform',
     description: 'Learn how to manage your QueryDesk resources with Terraform.',
   },
   {
-    href: '/github-actions',
+    href: '/guides/github-actions',
     name: 'GitHub Actions',
     description:
       'Learn how to manage your QueryDesk resources with GitHub Actions.',
   },
   {
-    href: '/workflows',
+    href: '/guides/workflows',
     name: 'Workflows',
     description:
       'Learn how to automate your processes with QueryDesk workflows.',

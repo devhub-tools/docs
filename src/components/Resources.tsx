@@ -28,7 +28,7 @@ interface Resource {
 
 const resources: Array<Resource> = [
   {
-    href: '/databases',
+    href: '/resources/databases',
     name: 'Databases',
     description:
       'Learn about the database model and how to create, retrieve, update, delete, and list databases.',
@@ -42,7 +42,7 @@ const resources: Array<Resource> = [
     },
   },
   {
-    href: '/workflows',
+    href: '/resources/workflows',
     name: 'Workflows',
     description:
       'Learn about the conversation model and how to create, retrieve, update, delete, and list conversations.',
@@ -56,7 +56,7 @@ const resources: Array<Resource> = [
     },
   },
   {
-    href: '/dashboards',
+    href: '/resources/dashboards',
     name: 'Dashboards',
     description:
       'Learn about the message model and how to create, retrieve, update, delete, and list messages.',
