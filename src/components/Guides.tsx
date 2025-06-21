@@ -8,21 +8,21 @@ const guides = [
     description: 'Learn how to authenticate your API requests.',
   },
   {
-    href: '/pagination',
-    name: 'Pagination',
-    description: 'Understand how to work with paginated responses.',
+    href: '/terraform',
+    name: 'Terraform',
+    description: 'Learn how to manage your QueryDesk resources with Terraform.',
   },
   {
-    href: '/errors',
-    name: 'Errors',
+    href: '/github-actions',
+    name: 'GitHub Actions',
     description:
-      'Read about the different types of errors returned by the API.',
+      'Learn how to manage your QueryDesk resources with GitHub Actions.',
   },
   {
-    href: '/webhooks',
-    name: 'Webhooks',
+    href: '/workflows',
+    name: 'Workflows',
     description:
-      'Learn how to programmatically configure webhooks for your app.',
+      'Learn how to automate your processes with QueryDesk workflows.',
   },
 ]
 
