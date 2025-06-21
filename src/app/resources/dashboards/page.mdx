@@ -1,117 +1,147 @@
 export const metadata = {
-  title: 'Contacts',
+  title: 'Dashboards',
   description:
-    'On this page, we’ll dive into the different contact endpoints you can use to manage contacts programmatically.',
+    'On this page, we\'ll dive into the different dashboard endpoints you can use to manage dashboards programmatically.',
 }
 
-# Contacts
+# Dashboards
 
-As the name suggests, contacts are a core part of Protocol — the very reason Protocol exists is so you can have secure conversations with your contacts. On this page, we'll dive into the different contact endpoints you can use to manage contacts programmatically. We'll look at how to query, create, update, and delete contacts. {{ className: 'lead' }}
+Dashboards allow you to visualize and monitor your data in a centralized location. On this page, we'll dive into the different dashboard endpoints you can use to manage dashboards programmatically. We'll look at how to query, create, update, and delete dashboards. {{ className: 'lead' }}
 
-## The contact model
+<Note>
+Dashboards can also be managed with Terraform using the official provider: https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/dashboard
+</Note>
 
-The contact model contains all the information about your contacts, such as their username, avatar, and phone number. It also contains a reference to the conversation between you and the contact and information about when they were last active on Protocol.
+## The dashboard model
+
+The dashboard model contains all the information about your dashboards, such as their name, access restrictions, and panels. It also contains information about when they were created and last updated.
 
 ### Properties
 
 <Properties>
   <Property name="id" type="string">
-    Unique identifier for the contact.
+    Unique identifier for the dashboard (prefixed with "dash").
   </Property>
-  <Property name="username" type="string">
-    The username for the contact.
+  <Property name="name" type="string">
+    The name of the dashboard.
   </Property>
-  <Property name="phone_number" type="string">
-    The phone number for the contact.
+  <Property name="restricted_access" type="boolean">
+    Whether the dashboard has restricted access. Defaults to false.
   </Property>
-  <Property name="avatar_url" type="string">
-    The avatar image URL for the contact.
+  <Property name="archived_at" type="datetime">
+    Timestamp when the dashboard was archived, if applicable.
   </Property>
-  <Property name="display_name" type="string">
-    The contact display name in the contact list. By default, this is just the
-    username.
+  <Property name="panels" type="array">
+    Array of dashboard panels containing visualizations and data.
   </Property>
-  <Property name="conversation_id" type="string">
-    Unique identifier for the conversation associated with the contact.
+  <Property name="inserted_at" type="datetime">
+    Timestamp of when the dashboard was created.
   </Property>
-  <Property name="last_active_at" type="timestamp">
-    Timestamp of when the contact was last active on the platform.
+  <Property name="updated_at" type="datetime">
+    Timestamp of when the dashboard was last updated.
   </Property>
-  <Property name="created_at" type="timestamp">
-    Timestamp of when the contact was created.
+</Properties>
+
+### Panel structure
+
+Each panel in the dashboard contains:
+
+<Properties>
+  <Property name="id" type="string">
+    Unique identifier for the panel (prefixed with "pl").
+  </Property>
+  <Property name="title" type="string">
+    The title of the panel.
+  </Property>
+  <Property name="inputs" type="array">
+    Array of input parameters for the panel.
+  </Property>
+  <Property name="details" type="object">
+    Panel-specific details (e.g., query information for query panels).
   </Property>
 </Properties>
 
 ---
 
-## List all contacts {{ tag: 'GET', label: '/v1/contacts' }}
+## Create a dashboard {{ tag: 'POST', label: '/v1/dashboards' }}
 
 <Row>
   <Col>
 
-    This endpoint allows you to retrieve a paginated list of all your contacts. By default, a maximum of ten contacts are shown per page.
+    This endpoint allows you to create a new dashboard in your organization. To create a dashboard, you must provide a name and optionally set access restrictions and panels.
+
+    ### Required attributes
+
+    <Properties>
+      <Property name="name" type="string">
+        The name of the dashboard.
+      </Property>
+      <Property name="restricted_access" type="boolean">
+        Whether the dashboard has restricted access.
+      </Property>
+    </Properties>
 
     ### Optional attributes
 
     <Properties>
-      <Property name="limit" type="integer">
-        Limit the number of contacts returned.
+      <Property name="panels" type="array">
+        Array of dashboard panels to include in the dashboard.
       </Property>
     </Properties>
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="GET" label="/v1/contacts">
+    <CodeGroup title="Request" tag="POST" label="/v1/dashboards">
 
     ```bash {{ title: 'cURL' }}
-    curl -G https://api.protocol.chat/v1/contacts \
+    curl https://api.devhub.com/v1/dashboards \
       -H "Authorization: Bearer {token}" \
-      -d active=true \
-      -d limit=10
-    ```
-
-    ```js
-    import ApiClient from '@example/protocol-api'
-
-    const client = new ApiClient(token)
-
-    await client.contacts.list()
-    ```
-
-    ```python
-    from protocol_api import ApiClient
-
-    client = ApiClient(token)
-
-    client.contacts.list()
-    ```
-
-    ```php
-    $client = new \Protocol\ApiClient($token);
-
-    $client->contacts->list();
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Production Metrics",
+        "restricted_access": false,
+        "panels": [
+          {
+            "title": "CPU Usage",
+            "inputs": [
+              {
+                "key": "time_range",
+                "description": "Time range for the query"
+              }
+            ],
+            "details": {
+              "__type__": "query",
+              "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+              "credential_id": "cred_123456789"
+            }
+          }
+        ]
+      }'
     ```
 
     </CodeGroup>
 
     ```json {{ title: 'Response' }}
     {
-      "has_more": false,
-      "data": [
+      "id": "dash_123456789",
+      "name": "Production Metrics",
+      "restricted_access": false,
+      "panels": [
         {
-          "id": "WAz8eIbvDR60rouK",
-          "username": "FrankMcCallister",
-          "phone_number": "1-800-759-3000",
-          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-          "display_name": null,
-          "conversation_id": "xgQQXg3hrtjh7AvZ",
-          "last_active_at": 705103200,
-          "created_at": 692233200
-        },
-        {
-          "id": "hSIhXBhNe8X1d8Et"
-          // ...
+          "id": "pl_987654321",
+          "title": "CPU Usage",
+          "inputs": [
+            {
+              "key": "time_range",
+              "description": "Time range for the query"
+            }
+          ],
+          "details": {
+            "__type__": "query",
+            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "credential_id": "cred_123456789"
+          }
         }
       ]
     }
@@ -122,225 +152,115 @@ The contact model contains all the information about your contacts, such as thei
 
 ---
 
-## Create a contact {{ tag: 'POST', label: '/v1/contacts' }}
+## Retrieve a dashboard {{ tag: 'GET', label: '/v1/dashboards/:id' }}
 
 <Row>
   <Col>
 
-    This endpoint allows you to add a new contact to your contact list in Protocol. To add a contact, you must provide their Protocol username and phone number.
+    This endpoint allows you to retrieve a dashboard by providing its id. Refer to [the list](#the-dashboard-model) at the top of this page to see which properties are included with dashboard objects.
 
-    ### Required attributes
+  </Col>
+  <Col sticky>
 
-    <Properties>
-      <Property name="username" type="string">
-        The username for the contact.
-      </Property>
-      <Property name="phone_number" type="string">
-        The phone number for the contact.
-      </Property>
-    </Properties>
+    <CodeGroup title="Request" tag="GET" label="/v1/dashboards/dash_123456789">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://api.devhub.com/v1/dashboards/dash_123456789 \
+      -H "Authorization: Bearer {token}"
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "id": "dash_123456789",
+      "name": "Production Metrics",
+      "restricted_access": false,
+      "panels": [
+        {
+          "id": "pl_987654321",
+          "title": "CPU Usage",
+          "inputs": [
+            {
+              "key": "time_range",
+              "description": "Time range for the query"
+            }
+          ],
+          "details": {
+            "__type__": "query",
+            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "credential_id": "cred_123456789"
+          }
+        }
+      ]
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Update a dashboard {{ tag: 'PUT', label: '/v1/dashboards/:id' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to perform an update on a dashboard. You can update the name, restricted access setting, and panels of the dashboard.
 
     ### Optional attributes
 
     <Properties>
-      <Property name="avatar_url" type="string">
-        The avatar image URL for the contact.
+      <Property name="name" type="string">
+        The name of the dashboard.
       </Property>
-      <Property name="display_name" type="string">
-        The contact display name in the contact list. By default, this is just the username.
+      <Property name="restricted_access" type="boolean">
+        Whether the dashboard has restricted access.
       </Property>
-    </Properties>
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/v1/contacts">
-
-    ```bash {{ title: 'cURL' }}
-    curl https://api.protocol.chat/v1/contacts \
-      -H "Authorization: Bearer {token}" \
-      -d username="FrankMcCallister" \
-      -d phone_number="1-800-759-3000" \
-      -d avatar_url="https://assets.protocol.chat/avatars/frank.jpg"
-    ```
-
-    ```js
-    import ApiClient from '@example/protocol-api'
-
-    const client = new ApiClient(token)
-
-    await client.contacts.create({
-      username: 'FrankMcCallister',
-      phone_number: '1-800-759-3000',
-      avatar_url: 'https://assets.protocol.chat/avatars/frank.jpg',
-    })
-    ```
-
-    ```python
-    from protocol_api import ApiClient
-
-    client = ApiClient(token)
-
-    client.contacts.create(
-      username="FrankMcCallister",
-      phone_number="1-800-759-3000",
-      avatar_url="https://assets.protocol.chat/avatars/frank.jpg",
-    )
-    ```
-
-    ```php
-    $client = new \Protocol\ApiClient($token);
-
-    $client->contacts->create([
-      'username' => 'FrankMcCallister',
-      'phone_number' => '1-800-759-3000',
-      'avatar_url' => 'https://assets.protocol.chat/avatars/frank.jpg',
-    ]);
-    ```
-
-    </CodeGroup>
-
-    ```json {{ title: 'Response' }}
-    {
-      "id": "WAz8eIbvDR60rouK",
-      "username": "FrankMcCallister",
-      "phone_number": "1-800-759-3000",
-      "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-      "display_name": null,
-      "conversation_id": "xgQQXg3hrtjh7AvZ",
-      "last_active_at": null,
-      "created_at": 692233200
-    }
-    ```
-
-  </Col>
-</Row>
-
----
-
-## Retrieve a contact {{ tag: 'GET', label: '/v1/contacts/:id' }}
-
-<Row>
-  <Col>
-
-    This endpoint allows you to retrieve a contact by providing their Protocol id. Refer to [the list](#the-contact-model) at the top of this page to see which properties are included with contact objects.
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/v1/contacts/WAz8eIbvDR60rouK">
-
-    ```bash {{ title: 'cURL' }}
-    curl https://api.protocol.chat/v1/contacts/WAz8eIbvDR60rouK \
-      -H "Authorization: Bearer {token}"
-    ```
-
-    ```js
-    import ApiClient from '@example/protocol-api'
-
-    const client = new ApiClient(token)
-
-    await client.contacts.get('WAz8eIbvDR60rouK')
-    ```
-
-    ```python
-    from protocol_api import ApiClient
-
-    client = ApiClient(token)
-
-    client.contacts.get("WAz8eIbvDR60rouK")
-    ```
-
-    ```php
-    $client = new \Protocol\ApiClient($token);
-
-    $client->contacts->get('WAz8eIbvDR60rouK');
-    ```
-
-    </CodeGroup>
-
-    ```json {{ title: 'Response' }}
-    {
-      "id": "WAz8eIbvDR60rouK",
-      "username": "FrankMcCallister",
-      "phone_number": "1-800-759-3000",
-      "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-      "display_name": null,
-      "conversation_id": "xgQQXg3hrtjh7AvZ",
-      "last_active_at": 705103200,
-      "created_at": 692233200
-    }
-    ```
-
-  </Col>
-</Row>
-
----
-
-## Update a contact {{ tag: 'PUT', label: '/v1/contacts/:id' }}
-
-<Row>
-  <Col>
-
-    This endpoint allows you to perform an update on a contact. Currently, the only attribute that can be updated on contacts is the `display_name` attribute which controls how a contact appears in your contact list in Protocol.
-
-    ### Optional attributes
-
-    <Properties>
-      <Property name="display_name" type="string">
-        The contact display name in the contact list. By default, this is just the username.
+      <Property name="panels" type="array">
+        Array of dashboard panels to include in the dashboard.
       </Property>
     </Properties>
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="PUT" label="/v1/contacts/WAz8eIbvDR60rouK">
+    <CodeGroup title="Request" tag="PUT" label="/v1/dashboards/dash_123456789">
 
     ```bash {{ title: 'cURL' }}
-    curl -X PUT https://api.protocol.chat/v1/contacts/WAz8eIbvDR60rouK \
+    curl -X PUT https://api.devhub.com/v1/dashboards/dash_123456789 \
       -H "Authorization: Bearer {token}" \
-      -d display_name="UncleFrank"
-    ```
-
-    ```js
-    import ApiClient from '@example/protocol-api'
-
-    const client = new ApiClient(token)
-
-    await client.contacts.update('WAz8eIbvDR60rouK', {
-        display_name: 'UncleFrank',
-    })
-    ```
-
-    ```python
-    from protocol_api import ApiClient
-
-    client = ApiClient(token)
-
-    client.contacts.update("WAz8eIbvDR60rouK", display_name="UncleFrank")
-    ```
-
-    ```php
-    $client = new \Protocol\ApiClient($token);
-
-    $client->contacts->update('WAz8eIbvDR60rouK', [
-      'display_name' => 'UncleFrank',
-    ]);
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Updated Production Metrics",
+        "restricted_access": true
+      }'
     ```
 
     </CodeGroup>
 
     ```json {{ title: 'Response' }}
     {
-      "id": "WAz8eIbvDR60rouK",
-      "username": "FrankMcCallister",
-      "phone_number": "1-800-759-3000",
-      "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-      "display_name": "UncleFrank",
-      "conversation_id": "xgQQXg3hrtjh7AvZ",
-      "last_active_at": 705103200,
-      "created_at": 692233200
+      "id": "dash_123456789",
+      "name": "Updated Production Metrics",
+      "restricted_access": true,
+      "panels": [
+        {
+          "id": "pl_987654321",
+          "title": "CPU Usage",
+          "inputs": [
+            {
+              "key": "time_range",
+              "description": "Time range for the query"
+            }
+          ],
+          "details": {
+            "__type__": "query",
+            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "credential_id": "cred_123456789"
+          }
+        }
+      ]
     }
     ```
 
@@ -349,43 +269,21 @@ The contact model contains all the information about your contacts, such as thei
 
 ---
 
-## Delete a contact {{ tag: 'DELETE', label: '/v1/contacts/:id' }}
+## Delete a dashboard {{ tag: 'DELETE', label: '/v1/dashboards/:id' }}
 
 <Row>
   <Col>
 
-    This endpoint allows you to delete contacts from your contact list in Protocol. Note: This will also delete your conversation with the given contact.
+    This endpoint allows you to delete a dashboard from your organization. Note: This action cannot be undone and will permanently remove the dashboard and all its data.
 
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="DELETE" label="/v1/contacts/WAz8eIbvDR60rouK">
+    <CodeGroup title="Request" tag="DELETE" label="/v1/dashboards/dash_123456789">
 
     ```bash {{ title: 'cURL' }}
-    curl -X DELETE https://api.protocol.chat/v1/contacts/WAz8eIbvDR60rouK \
+    curl -X DELETE https://api.devhub.com/v1/dashboards/dash_123456789 \
       -H "Authorization: Bearer {token}"
-    ```
-
-    ```js
-    import ApiClient from '@example/protocol-api'
-
-    const client = new ApiClient(token)
-
-    await client.contacts.delete('WAz8eIbvDR60rouK')
-    ```
-
-    ```python
-    from protocol_api import ApiClient
-
-    client = ApiClient(token)
-
-    client.contacts.delete("WAz8eIbvDR60rouK")
-    ```
-
-    ```php
-    $client = new \Protocol\ApiClient($token);
-
-    $client->contacts->delete('WAz8eIbvDR60rouK');
     ```
 
     </CodeGroup>
