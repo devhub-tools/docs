@@ -235,11 +235,10 @@ export const navigation: Array<NavGroup> = [
     links: [
       { title: 'Introduction', href: '/' },
       { title: 'Quickstart', href: '/quickstart' },
-      { title: 'SDKs', href: '/sdks' },
       { title: 'Authentication', href: '/authentication' },
-      { title: 'Pagination', href: '/pagination' },
-      { title: 'Errors', href: '/errors' },
-      { title: 'Webhooks', href: '/webhooks' },
+      { title: 'Terraform', href: '/terraform' },
+      { title: 'GitHub Actions', href: '/github-actions' },
+      { title: 'Workflows', href: '/workflows' },
     ],
   },
   {
@@ -258,9 +257,7 @@ export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {
   return (
     <nav {...props}>
       <ul role="list">
-        <TopLevelNavItem href="/">API</TopLevelNavItem>
-        <TopLevelNavItem href="#">Documentation</TopLevelNavItem>
-        <TopLevelNavItem href="#">Support</TopLevelNavItem>
+        <TopLevelNavItem href="mailto:support@devhub.tools">Support</TopLevelNavItem>
         {navigation.map((group, groupIndex) => (
           <NavigationGroup
             key={group.title}

@@ -1,0 +1,274 @@
+export const metadata = {
+  title: 'Workflows',
+  description:
+    'In this guide, we will look at how to use QueryDesk workflows.',
+}
+
+# Workflows
+
+QueryDesk workflows are a way to automate processes using queries, API calls, slack messages, and more. {{ className: 'lead' }}
+
+## Overview
+
+Workflows allow you to create automated processes that can:
+- Execute database queries
+- Make API calls to external services
+- Send Slack notifications
+- Require human approvals
+- Make conditional decisions
+- Reply to previous Slack messages
+
+Each workflow consists of a series of steps that execute in order, with the ability to use outputs from previous steps as inputs to subsequent steps.
+
+## Triggers
+
+Workflows can be triggered in several ways:
+
+1. **Manual execution**: Run workflows on-demand
+1. **API**: Trigger workflows via the API
+1. **Cron schedule**: Automatically run on a schedule using cron expressions
+1. **Linear label**: Trigger when a Linear issue gets a specific label
+
+### API
+
+Workflows can be triggered via the API by calling this endpoint with inputs passed as a JSON body:
+
+```
+curl -X POST https://xxx.devhub.cloud/api/v1/workflows/wf_xxx/run \
+  -H "x-api-key: dh_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "1234567890"}'
+```
+
+### Cron Schedule
+
+Use standard cron syntax to schedule workflow execution:
+
+```
+# Run every day at 2 AM UTC
+0 2 * * *
+
+# Run every Monday at 9 AM UTC
+0 9 * * 1
+
+# Run every hour
+0 * * * *
+```
+
+### Linear Label
+
+Workflows can be triggered when a Linear issue gets a specific label. This requires setting up the Linear integration.
+
+To pass inputs from the Linear issue it must be added to the issue description in this format:
+
+```
+Workflow inputs:
+key: value
+```
+
+It will stop parsing the inputs after the first empty line or a line without a colon.
+
+## Inputs
+
+Workflows can accept inputs that are provided when the workflow is triggered. These inputs can be used throughout the workflow execution.
+
+### Input Types
+
+Workflows support the following input types:
+
+- **string**: Text values
+- **integer**: Whole numbers
+- **float**: Decimal numbers
+- **boolean**: True/false values
+
+### Using Inputs
+
+Inputs are referenced using the `${input_name}` syntax in:
+- Step conditions
+- Query strings
+- API request bodies
+- Slack messages
+- Condition expressions
+
+**Example:**
+```json
+{
+  "user_id": "12345",
+  "email": "user@example.com",
+  "is_active": true
+}
+```
+
+These can be used in workflow steps like:
+- Query: `SELECT * FROM users WHERE id = '${user_id}'`
+- Condition: `${is_active} == true`
+- API Body: `{"user_id": "${user_id}", "email": "${email}"}`
+
+## Step Conditions
+
+Each step can have an optional condition that determines whether it should run. If the condition evaluates to `false`, the step is skipped.
+
+**Condition Syntax:**
+- Use input variables: `${input_name}`
+- Use outputs from previous steps: `${step.step_name.output.field_name}`
+- Basic operators: `==`, `!=`, `>`, `<`, `>=`, `<=`, `&&`, `||`, `not`
+
+**Examples:**
+```
+"${user_id}" == "12345"
+"${step.query_step.output.rows[0][0]}" != ""
+${is_active} && ${step.api_step.output.status_code} == 200
+```
+
+## Using Outputs from Previous Steps
+
+You can reference outputs from any previous step using this syntax:
+```
+${step.step_name.output.field_name}
+```
+
+<Note>
+  When using outputs where a string is required, such as a query, make sure to wrap the output in quotes (e.g. `"${step.query_step.output.rows[0][0]}"`).
+</Note>
+
+**Examples:**
+
+1. **Accessing query results:**
+   ```
+   ${step.user_lookup.output.rows[0][0]}  // First row, first column
+   ```
+
+2. **Checking API responses:**
+   ```
+   ${step.create_user.output.status_code} == 201
+   ${step.create_user.output.body.id}  // User ID from a json response
+   ```
+
+3. **Using Slack message details:**
+   ```
+   ${step.notification.output.channel}  // Channel ID
+   ${step.notification.output.timestamp}  // Message timestamp
+   ```
+
+4. **Complex conditions:**
+   ```
+   ${step.query_step.output.num_rows} > 0 && ${step.api_step.output.status_code} == 200
+   ```
+
+
+## Query Action
+
+Executes a database query using a specified credential.
+
+**Configuration:**
+- **Database user**: Select the credential to use for the query
+- **Query to run**: SQL query (can use variables)
+- **Timeout (seconds)**: Maximum execution time
+
+**Output Shape:**
+```json
+{
+  "rows": [
+    ["value1", "value2"],
+    ["value3", "value4"]
+  ],
+  "columns": ["column1", "column2"],
+  "command": "select",
+  "messages": [],
+  "num_rows": 2
+}
+```
+
+**Using Query Outputs:**
+- Access specific row/column: `${step.query_step.output.rows[0][0]}`
+- Check row count: `${step.query_step.output.num_rows} > 0`
+- Access column names: `${step.query_step.output.columns[0]}`
+
+## API Action
+
+Makes HTTP requests to external APIs.
+
+**Configuration:**
+- **Endpoint**: Full URL for the API request
+- **Method**: HTTP method (GET, POST, PUT, PATCH, DELETE)
+- **Headers**: Key-value pairs for request headers, the value is stored encrypted in the database
+- **Body**: Request body (can use variables)
+- **Expected status code**: Status code that indicates success, if the status code is not the expected one, the workflow will fail.
+- **Include JWT**: Whether to include a JWT that can be verified by external services.
+
+**Output Shape:**
+```json
+{
+  "status_code": 200,
+  "body": {
+    "id": "12345",
+    "name": "John Doe",
+    "email": "john@example.com"
+  }
+}
+```
+
+**Using API Outputs:**
+- Check status: `${step.api_step.output.status_code} == 200`
+- Access json response data: `${step.api_step.output.body.name}`
+- Nested json access: `${step.api_step.output.body.user.profile.email}`
+
+**Validating JWT:**
+
+If the option is enabled, the API call will include the `x-devhub-jwt` header in the request which will contain the following claims:
+- `aud`: The endpoint of the API call
+- `sub`: The workflow run ID
+- `workflow_id`: The workflow ID
+
+## Slack Action
+
+Sends a message to a Slack channel.
+
+**Configuration:**
+- **Slack channel**: Channel name (e.g., "#general")
+- **Message**: Message content (can use variables)
+- **Link text**: Text for the workflow link
+
+**Output Shape:**
+```json
+{
+  "channel": "C1234567890",
+  "timestamp": "1234567890.123456"
+}
+```
+
+**Using Slack Outputs:**
+- Channel ID: `${step.slack_step.output.channel}`
+- Message timestamp: `${step.slack_step.output.timestamp}`
+
+## Slack Reply Action
+
+Replies to a previous Slack message in the same thread.
+
+**Configuration:**
+- **Reply to step**: Name of the step that sent the original message
+- **Message**: Reply message content (can use variables)
+
+**Output Shape:**
+```json
+{
+  "channel": "C1234567890",
+  "timestamp": "1234567890.123457"
+}
+```
+
+## Approval Action
+
+Requires human approval before the workflow can continue.
+
+**Configuration:**
+- **Reviews required**: Number of approvals needed
+- **Approvers**: Users or roles that can approve
+
+## Condition Action
+
+Evaluates an expression that only allows the workflow to continue if true.
+
+**Configuration:**
+- **Expression**: Boolean expression to evaluate
+- **When false, mark workflow as**: What to do if condition is false (succeeded/failed)

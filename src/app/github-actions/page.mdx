@@ -1,0 +1,21 @@
+export const metadata = {
+  title: 'GitHub Actions',
+  description:
+    'In this guide, we will look at how to use the official GitHub Actions to manage your QueryDesk resources',
+}
+
+# GitHub Actions
+
+We provide official GitHub Actions to incorporate resources into your CI/CD pipeline. {{ className: 'lead' }}
+
+## Setup database
+
+The `querydesk-setup-action` is used to setup a database in your QueryDesk instance. For example this can be useful for automating the setup of databases for preview environments.
+
+View the action here: [https://github.com/devhub-tools/querydesk-setup-action](https://github.com/devhub-tools/querydesk-setup-action).
+
+## Remove database
+
+The `querydesk-remove-action` is used to remove a database from your QueryDesk instance. For example this can be useful for automating the removal of databases for preview environments when a pull request is merged.
+
+View the action here: [https://github.com/devhub-tools/querydesk-remove-action](https://github.com/devhub-tools/querydesk-remove-action).

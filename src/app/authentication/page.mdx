@@ -1,41 +1,36 @@
 export const metadata = {
   title: 'Authentication',
   description:
-    'In this guide, we’ll look at how authentication works. Protocol offers two ways to authenticate your API requests: Basic authentication and OAuth2 with a token.',
+    'Learn how to authenticate with the API using API keys. API keys are required to access all endpoints and can be managed through settings in your installation.',
 }
 
 # Authentication
 
-You'll need to authenticate your requests to access any of the endpoints in the Protocol API. In this guide, we'll look at how authentication works. Protocol offers two ways to authenticate your API requests: Basic authentication and OAuth2 with a token — OAuth2 is the recommended way. {{ className: 'lead' }}
+You'll need to authenticate your requests to access any of the endpoints in the API. QueryDesk uses API keys for authentication, which provide secure access to your organization's resources. {{ className: 'lead' }}
 
-## Basic authentication
+## API Keys
 
-With basic authentication, you use your username and password to authenticate your HTTP requests. Unless you have a very good reason, you probably shouldn't use basic auth. Here's how to authenticate using cURL:
+Each API key is associated with a specific organization and can be used to manage settings through Terraform and official GitHub Actions.
 
-```bash {{ title: 'Example request with basic auth' }}
-curl https://api.protocol.chat/v1/conversations \
-  -u username:password
+### Getting an API Key
+
+1. **Navigate to Settings**: Go to your organization's settings in the app
+2. **API Keys Section**: Click on the "API Keys" tab in the settings
+3. **Create New Key**: Click the "New API key" button
+4. **Name Your Key**: Provide a descriptive name for your API key
+5. **Copy the Token**: Once created, copy the generated API key token immediately - you won't be able to retrieve it again
+
+Remember that API keys have full access to your organization's resources, so treat them with the same security as your account password.
+
+### Using Your API Key
+
+Include your API key in the `x-api-key` header with all API requests:
+
+```bash {{ title: 'Example request with API key' }}
+curl https://xxx.devhub.cloud/api/v1/endpoint \
+  -H "x-api-key: dh_xxx"
 ```
 
-Please don't commit your Protocol password to GitHub!
+### API Key Format
 
-## OAuth2 with bearer token
-
-The recommended way to authenticate with the Protocol API is by using OAuth2. When establishing a connection using OAuth2, you will need your access token — you will find it in the [Protocol dashboard](#) under API settings. Here's how to add the token to the request header using cURL:
-
-```bash {{ title: 'Example request with bearer token' }}
-curl https://api.protocol.chat/v1/conversations \
-  -H "Authorization: Bearer {token}"
-```
-
-Always keep your token safe and reset it if you suspect it has been compromised.
-
-## Using an SDK
-
-If you use one of our official SDKs, you won't have to worry about any of the above — fetch your access token from the [Protocol dashboard](#) under API settings, and the client library will take care of the rest. All the client libraries use OAuth2 behind the scenes.
-
-<div className="not-prose">
-  <Button href="/sdks" variant="text" arrow="right">
-    <>Check out our list of first-party SDKs</>
-  </Button>
-</div>
+Devhub API keys are prefixed with `dh_` followed by your token.
