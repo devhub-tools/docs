@@ -239,6 +239,7 @@ export const navigation: Array<NavGroup> = [
       { title: 'Terraform', href: '/guides/terraform' },
       { title: 'GitHub Actions', href: '/guides/github-actions' },
       { title: 'Workflows', href: '/guides/workflows' },
+      { title: 'Data Protection', href: '/guides/data-protection' },
     ],
   },
   {

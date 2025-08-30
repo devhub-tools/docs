@@ -1,0 +1,67 @@
+export const metadata = {
+  title: 'Data Protection',
+  description:
+    'Learn how QueryDesk implements secure data protection through query rewriting and allow-list validation to ensure sensitive data never leaves your database.',
+}
+
+# Data Protection
+
+QueryDesk implements a robust data protection system designed to ensure sensitive data never leaves your database while maintaining query functionality. This system is built with security-first principles and provides granular control over data access. Currently only available for PostgreSQL. {{ className: 'lead' }}
+
+## Security Architecture Overview
+
+The data protection system operates at the query processing layer, where all queries are validated and potentially modified before execution. This ensures that employees cannot access sensitive data they shouldn't have permission to view, preventing PII leaks and maintaining data privacy.
+
+### Core Security Principles
+
+1. **Data Never Leaves the Database**: All sensitive data remains within your database infrastructure
+2. **Query Rewriting**: Queries are dynamically modified to enforce protection policies
+3. **Allow-List Validation**: Only pre-approved SQL syntax and operations are permitted
+5. **Default Protection**: By default, all columns are hidden unless explicitly allowed if a policy is assigned
+
+## How It Works
+
+Each query is analyzed using the PostgreSQL parser and then rewritten to enforce the data protection policy.
+
+```sql
+-- Original query
+SELECT id, name, email FROM users;
+
+-- Rewritten query with data protection
+SELECT id, '***' AS name, '***' AS email FROM users;
+```
+
+In cases where a user selects with *, the * is replaced with all columns explicitly referenced.
+
+```sql
+-- Original query
+SELECT * FROM users;
+
+-- Rewritten query with data protection
+SELECT id, '***' AS name, '***' AS email FROM users;
+```
+
+Protected fields are not allowed to be referenced anywhere in the query, including `WHERE` clauses as that would allow to infer sensitive data.
+
+```sql
+-- Original query
+SELECT id FROM users WHERE email = 'test@example.com';
+
+-- Rewritten query with data protection
+SELECT id FROM users WHERE '***' = 'test@example.com';
+```
+
+## Policy Assignment and Evaluation
+Data protection policies can be assigned to individual users or roles. The system evaluates policies in the following order:
+
+1. **User-Specific Policy**: First looks for a policy explicitly assigned to the user
+2. **Role-Based Policy**: If no user policy exists, applies the policy assigned to the any of the user's roles
+3. **Default Protection**: If no policy is assigned, no data protection is applied
+
+Only a single policy is evaluated per query, ensuring consistent and predictable data protection behavior.
+
+## Query Parsing Engine
+The system uses PostgreSQL's native parser to ensure:
+- **Syntax Accuracy**: Leverages the same parser as PostgreSQL
+- **Security**: No custom parsing that could introduce vulnerabilities
+- **Compatibility**: Supports all standard PostgreSQL syntax

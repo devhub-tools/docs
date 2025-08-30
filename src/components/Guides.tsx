@@ -24,6 +24,12 @@ const guides = [
     description:
       'Learn how to automate your processes with QueryDesk workflows.',
   },
+  {
+    href: '/guides/data-protection',
+    name: 'Data Protection',
+    description:
+      'Learn how QueryDesk implements data protection to simplify meeting compliance requirements.',
+  },
 ]
 
 export function Guides() {
