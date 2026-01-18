@@ -22,21 +22,25 @@ function AnchorIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   )
 }
 
-function Eyebrow({ tag, label }: { tag?: string; label?: string }) {
+function Eyebrow({ tag, label, version }: { tag?: string; label?: string, version?: string }) {
   if (!tag && !label) {
     return null
   }
 
   return (
-    <div className="flex items-center gap-x-3">
-      {tag && <Tag>{tag}</Tag>}
-      {tag && label && (
-        <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
-      )}
-      {label && (
-        <span className="font-mono text-xs text-zinc-400">{label}</span>
-      )}
-    </div>
+    <div className="flex flex-col gap-y-3">
+      <div className="flex">{version && <Tag color="zinc">{version}</Tag>}</div>
+
+      <div className="flex items-center gap-x-3">
+        {tag && <Tag>{tag}</Tag>}
+        {tag && label && (
+          <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+        )}
+        {label && (
+          <span className="font-mono text-xs text-zinc-400">{label}</span>
+        )}
+      </div>
+    </div >
   )
 }
 
@@ -70,6 +74,7 @@ export function Heading<Level extends 2 | 3>({
   children,
   tag,
   label,
+  version,
   level,
   anchor = true,
   ...props
@@ -77,6 +82,7 @@ export function Heading<Level extends 2 | 3>({
   id: string
   tag?: string
   label?: string
+  version?: string
   level?: Level
   anchor?: boolean
 }) {
@@ -98,7 +104,7 @@ export function Heading<Level extends 2 | 3>({
 
   return (
     <>
-      <Eyebrow tag={tag} label={label} />
+      <Eyebrow tag={tag} label={label} version={version} />
       <Component
         ref={ref}
         className={tag || label ? 'mt-2 scroll-mt-32' : 'scroll-mt-24'}

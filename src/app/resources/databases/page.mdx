@@ -234,6 +234,59 @@ The database model contains all the information about your database connections,
 
 ---
 
+## Check database connection {{ tag: 'GET', label: '/api/v1/querydesk/databases/:id/check-connection/:username', version: 'v2.18.3+' }}
+
+<Row>
+  <Col>
+
+    This endpoint allows you to test the connection to a database using a specific credential. It attempts to establish a connection and returns the result as plain text.
+
+    ### Path parameters
+
+    <Properties>
+      <Property name="id" type="string">
+        The database ID to test the connection for.
+      </Property>
+      <Property name="username" type="string">
+        The username of the credential to use for the connection test.
+      </Property>
+    </Properties>
+
+    ### Response
+
+    The endpoint returns plain text:
+    - `"ok"` - Connection successful (200 status)
+    - Error message - Connection failed with the specific error message (200 status)
+    - `"not found"` - Database or credential not found (404 status)
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/api/v1/querydesk/databases/db_abc123def456/check-connection/app_user">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://api.devhub.sh/api/v1/querydesk/databases/db_abc123def456/check-connection/app_user \
+      -H "x-api-key: dh_xxx"
+    ```
+    </CodeGroup>
+
+    ```text {{ title: 'Response (Success)' }}
+    ok
+    ```
+
+    ```text {{ title: 'Response (Connection Error)' }}
+    FATAL: password authentication failed for user "app_user"
+    ```
+
+    ```text {{ title: 'Response (Not Found)' }}
+    not found
+    ```
+
+  </Col>
+</Row>
+
+---
+
 ## Update a database {{ tag: 'PATCH', label: '/api/v1/querydesk/databases/:id' }}
 
 <Row>
