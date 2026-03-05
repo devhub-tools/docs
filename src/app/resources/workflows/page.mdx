@@ -25,6 +25,9 @@ The workflow model contains all the information about your workflows, such as th
   <Property name="name" type="string">
     The name of the workflow.
   </Property>
+  <Property name="group" type="string">
+    Used to organize workflows into folders in the workflow list.
+  </Property>
   <Property name="cron_schedule" type="string">
     A cron expression evaluated using UTC time to trigger the workflow (e.g. 0 0 * * *).
   </Property>
@@ -98,6 +101,9 @@ The workflow model contains all the information about your workflows, such as th
     ### Optional attributes
 
     <Properties>
+      <Property name="group" type="string">
+        Used to organize workflows into folders in the workflow list.
+      </Property>
       <Property name="cron_schedule" type="string">
         A cron expression evaluated using UTC time to trigger the workflow.
       </Property>
@@ -151,6 +157,7 @@ The workflow model contains all the information about your workflows, such as th
     {
       "id": "wf_xxx",
       "name": "My Workflow",
+      "group": null,
       "cron_schedule": null,
       "trigger_linear_label": {
         "id": "lin_lbl_xxx",
@@ -206,6 +213,7 @@ The workflow model contains all the information about your workflows, such as th
     {
       "id": "wf_xxx",
       "name": "My Workflow",
+      "group": "Security Alerts",
       "cron_schedule": "0 0 * * *",
       "trigger_linear_label": {
         "id": "lin_lbl_xxx",
@@ -250,6 +258,9 @@ The workflow model contains all the information about your workflows, such as th
     <Properties>
       <Property name="name" type="string">
         The name of the workflow.
+      </Property>
+      <Property name="group" type="string">
+        Used to organize workflows into folders in the workflow list.
       </Property>
       <Property name="cron_schedule" type="string">
         A cron expression evaluated using UTC time to trigger the workflow.
@@ -296,6 +307,7 @@ The workflow model contains all the information about your workflows, such as th
     {
       "id": "wf_xxx",
       "name": "Updated Workflow",
+      "group": null,
       "cron_schedule": "0 0 * * *",
       "trigger_linear_label": {
         "id": "lin_lbl_xxx",
@@ -336,6 +348,7 @@ The workflow model contains all the information about your workflows, such as th
   <Col>
 
     This endpoint allows you to delete a workflow from your organization.
+    Workflows are not permanently deleted from the database but instead archived.
 
   </Col>
   <Col sticky>
