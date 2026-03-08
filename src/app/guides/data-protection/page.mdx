@@ -6,7 +6,7 @@ export const metadata = {
 
 # Data Protection
 
-QueryDesk implements a robust data protection system designed to ensure sensitive data never leaves your database while maintaining query functionality. This system is built with security-first principles and provides granular control over data access. Currently only available for PostgreSQL. {{ className: 'lead' }}
+QueryDesk implements a robust data protection system designed to ensure sensitive data never leaves your database while maintaining query functionality. This system is built with security-first principles and provides granular control over data access. {{ className: 'lead' }}
 
 ## Security Architecture Overview
 
@@ -21,7 +21,7 @@ The data protection system operates at the query processing layer, where all que
 
 ## How It Works
 
-Each query is analyzed using the PostgreSQL parser and then rewritten to enforce the data protection policy.
+Each query is analyzed and then rewritten to enforce the data protection policy.
 
 ```sql
 -- Original query
@@ -59,9 +59,3 @@ Data protection policies can be assigned to individual users or roles. The syste
 3. **Default Protection**: If no policy is assigned, no data protection is applied
 
 Only a single policy is evaluated per query, ensuring consistent and predictable data protection behavior.
-
-## Query Parsing Engine
-The system uses PostgreSQL's native parser to ensure:
-- **Syntax Accuracy**: Leverages the same parser as PostgreSQL
-- **Security**: No custom parsing that could introduce vulnerabilities
-- **Compatibility**: Supports all standard PostgreSQL syntax
