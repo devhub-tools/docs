@@ -8,7 +8,7 @@ After successfully completing sign-up, you will land on the **Databases** page. 
 > [!NOTE]
 > As the Devhub database is your QueryDesk instance, you want to avoid doing anything destructive. See previous warning.
 
-![Databases page showing the Devhub entry with Connect button](../assets/gsg-001.00.png)
+![Databases page showing the Devhub entry with Connect button](assets/gsg-001.00.png)
 
 The Devhub database is a live PostgreSQL instance. You can use it to run queries, test approval flows, and verify audit logging before connecting your own databases.
 
