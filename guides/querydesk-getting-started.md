@@ -32,7 +32,7 @@ The left navigation gives you access to everything in QueryDesk:
 
 On the Databases page, click **Connect** on the Devhub entry. This opens the query interface.
 
-![Query interface showing the left panel with table list, query pane, and results pane](../assets/gsg-002.00.png)
+![Query interface showing the left panel with table list, query pane, and results pane](assets/gsg-002.00.png)
 
 The interface has three main areas:
 
@@ -89,21 +89,21 @@ The AI assistant lets anyone on your team describe what they want in plain langu
 
 Click **AI assistant** in the left navigation (1), then click **Setup AI** (2).
 
-![Query interface with AI assistant highlighted in the left nav and Setup AI button](../assets/gsg-003.00.png)
+![Query interface with AI assistant highlighted in the left nav and Setup AI button](assets/gsg-003.00.png)
 
 This opens Settings. Navigate to the **Integrations** tab and click **Settings** next to **AI** (3).
 
-![Settings Integrations tab showing GitHub, Linear, Slack, AI, and Calendar Events entries with AI Settings button highlighted](../assets/gsg-004.00.png)
+![Settings Integrations tab showing GitHub, Linear, Slack, AI, and Calendar Events entries with AI Settings button highlighted](assets/gsg-004.00.png)
 
 Select a model from the **Model** dropdown (4), enter your **API key** for that model (5), and click **Save** (6).
 
-![AI settings modal showing the Model dropdown, API KEY field, and Save button](../assets/gsg-005.00.png)
+![AI settings modal showing the Model dropdown, API KEY field, and Save button](assets/gsg-005.00.png)
 
 Once saved, return to the **AI assistant** in the left navigation to open a conversation. Describe what you want to query in plain language. The assistant will generate SQL that you can run or edit before executing. Train the model on your schema to improve the relevance of its suggestions for your specific databases.
 
-![AI assistant conversation showing query results and chat interface with Insert and Run options](../assets/gsg-006.00.png)
+![AI assistant conversation showing query results and chat interface with Insert and Run options](assets/gsg-006.00.png)
 
-![Left navigation panel with AI assistant highlighted](../assets/gsg-007.00.png)
+![Left navigation panel with AI assistant highlighted](assets/gsg-007.00.png)
 
 ---
 
@@ -118,23 +118,23 @@ To test the approval functionality and user setup, it is recommended to set up a
 2. Click **Users** in the Settings ribbon.
 3. Click the **Invite User** button.
 
-![Settings Users page showing the Settings gear, Users tab, and Invite User button](../assets/gsg-008.00.png)
+![Settings Users page showing the Settings gear, Users tab, and Invite User button](assets/gsg-008.00.png)
 
 4. In the **Invite user** window, add the name and email address of the new user and click the **Invite** button.
 
-![Invite user modal with Name and Email fields and Invite button](../assets/gsg-009.00.png)
+![Invite user modal with Name and Email fields and Invite button](assets/gsg-009.00.png)
 
 5. Click **Add seats** in the Users Settings section to add a seat so the new user has a QueryDesk license.
 6. This opens the **Billing** Settings page. You will not be charged for this during your trial period.
 7. Enter the number of seats to add, then click **Add seats**. Return to the **Users** Settings page.
 
-![Billing page showing the Seats to Add field and Add seats button](../assets/gsg-010.00.png)
+![Billing page showing the Seats to Add field and Add seats button](assets/gsg-010.00.png)
 
-![Users page showing seats used, user list with Mark Smith and No license assigned status, and kebab menu](../assets/gsg-011.00.png)
+![Users page showing seats used, user list with Mark Smith and No license assigned status, and kebab menu](assets/gsg-011.00.png)
 
 8. As shown in the image above, click the kebab menu (⋮) next to the user you added (step 7), then select **Assign license**. You can make any other changes to the user at this time.
 
-![User detail panel showing Assign license button, integration fields, permissions checkboxes, and Roles and Teams sections](../assets/gsg-012.00.png)
+![User detail panel showing Assign license button, integration fields, permissions checkboxes, and Roles and Teams sections](assets/gsg-012.00.png)
 
 9. The user is now ready to join your instance/trial.
 
@@ -149,19 +149,19 @@ To test the approval functionality and user setup, it is recommended to set up a
 
 11. Once the new user has logged in, **Connect** to the Devhub database again and select **Settings** from the database menu.
 
-![Database menu with Settings option highlighted](../assets/gsg-013.00.png)
+![Database menu with Settings option highlighted](assets/gsg-013.00.png)
 
 12. Once in the database Settings, scroll down to **RBAC** (**R**ole-**B**ased **A**ccess **C**ontrol) and click **Add user**.
 
-![Database Settings page showing the RBAC section with Add user and Add role buttons](../assets/gsg-014.00.png)
+![Database Settings page showing the RBAC section with Add user and Add role buttons](assets/gsg-014.00.png)
 
 13. In the **Assign User** dropdown, select the user you want to add and click **Add user**.
 
-![Assign User modal with Mark Smith selected and Add user button](../assets/gsg-015.00.png)
+![Assign User modal with Mark Smith selected and Add user button](assets/gsg-015.00.png)
 
 14. The new user should now appear in the **RBAC** section of the Devhub database settings. Select the **Permission** dropdown and choose **Approver**. This user can now approve queries.
 
-![RBAC section showing Mark Smith with Permission dropdown open and Approver option highlighted](../assets/gsg-016.00.png)
+![RBAC section showing Mark Smith with Permission dropdown open and Approver option highlighted](assets/gsg-016.00.png)
 
 ---
 
@@ -172,7 +172,7 @@ The Devhub database comes pre-configured with two credentials:
 - **devhub_readonly:** a read-only user. Queries run immediately with no review required, as the user only has read-only access to the database.
 - **devhub:** a read/write user. Queries require one approval before they execute.
 
-![Database Settings Credentials section showing devhub_readonly and devhub credentials](../assets/gsg-017.00.png)
+![Database Settings Credentials section showing devhub_readonly and devhub credentials](assets/gsg-017.00.png)
 
 This two-credential setup reflects a recommended best practice: a read-only credential for unrestricted data exploration, and a read/write credential with a review gate on any query that can modify data.
 
@@ -185,7 +185,7 @@ To see the approval flow in action:
 2. Type a query in the query pane. A simple `SELECT` statement is fine.
 3. Click **Request review**.
 
-![Run query modal showing the devhub credential selected, 1 review required notice, and Request review button](../assets/gsg-018.00.png)
+![Run query modal showing the devhub credential selected, 1 review required notice, and Request review button](assets/gsg-018.00.png)
 
 Because the `devhub` credential requires one review, the query is not executed immediately. It is submitted to the **Pending queries** queue instead. Both the submitting user and the reviewer can access the pending query via **Pending queries** in the left-hand navigation.
 
@@ -195,7 +195,7 @@ Because the `devhub` credential requires one review, the query is not executed i
 
 Click **Pending queries** in the left navigation. Your submitted query appears here.
 
-![Pending queries view showing the submitted query with metadata, approval counter, and action buttons](../assets/gsg-019.00.png)
+![Pending queries view showing the submitted query with metadata, approval counter, and action buttons](assets/gsg-019.00.png)
 
 Each pending query displays the database and credentials it will run against, the timeout setting, when it was last edited, and the full query text.
 
@@ -208,7 +208,7 @@ From this view, the submitting user can:
 
 The second user you created in [Adding users to approve queries](#adding-users-to-approve-queries) above will act as the approver. When that user checks **Pending queries**, they will see the following:
 
-![Pending queries view from the approver perspective showing the Approve button](../assets/gsg-020.00.png)
+![Pending queries view from the approver perspective showing the Approve button](assets/gsg-020.00.png)
 
 From this view, a user with approver permissions can:
 
@@ -218,7 +218,7 @@ From this view, a user with approver permissions can:
 
 Once the query has been approved, the original submitting user will see a **Run Query** button appear on that query in their Pending queries list. Click **Run Query** to execute it.
 
-![Pending queries view showing the approved query with Run Query button](../assets/gsg-021.00.png)
+![Pending queries view showing the approved query with Run Query button](assets/gsg-021.00.png)
 
 Once a query has been run, it is removed from the **Pending queries** view.
 
@@ -232,7 +232,7 @@ Click **Audit log** in the left navigation.
 
 Every query that ran during this session is captured here: the database it ran against, the user and credentials, the timestamp, and the full query text. The queries you ran as `devhub_readonly` are here. So is the query you submitted and approved as `devhub`.
 
-![Audit log showing query entries with run timestamps, failure indicators, and error notifications](../assets/gsg-022.00.png)
+![Audit log showing query entries with run timestamps, failure indicators, and error notifications](assets/gsg-022.00.png)
 
 No configuration required. The audit log is always on. Watching. Waiting.
 
