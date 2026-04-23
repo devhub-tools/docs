@@ -234,7 +234,7 @@ export const navigation: Array<NavGroup> = [
     title: 'Guides',
     links: [
       { title: 'Introduction', href: '/' },
-      { title: 'Quickstart', href: '/guides/quickstart' },
+      { title: 'Getting Started', href: '/guides/getting-started' },
       { title: 'Authentication', href: '/guides/authentication' },
       { title: 'Terraform', href: '/guides/terraform' },
       { title: 'GitHub Actions', href: '/guides/github-actions' },
