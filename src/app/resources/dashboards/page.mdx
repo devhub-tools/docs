@@ -48,16 +48,38 @@ Each panel in the dashboard contains:
 
 <Properties>
   <Property name="id" type="string">
-    Unique identifier for the panel (prefixed with "pl").
+    Unique identifier for the panel.
   </Property>
   <Property name="title" type="string">
     The title of the panel.
   </Property>
   <Property name="inputs" type="array">
-    Array of input parameters for the panel.
+    Array of input parameters for the panel. Each input has a `key` and a `description`.
+  </Property>
+  <Property name="actions" type="array">
+    Array of row actions that can be triggered from each row of the panel's results. See [Action structure](#action-structure) below.
   </Property>
   <Property name="details" type="object">
-    Panel-specific details (e.g., query information for query panels).
+    Panel-specific details. Currently only `query` panels are supported (`__type__: "query"`), with a `query` string and a `credential_id` referencing the database credential to run against.
+  </Property>
+</Properties>
+
+### Action structure
+
+Actions appear as buttons on each row of a query panel's results. When clicked, they trigger a workflow, passing values from the row's columns as workflow inputs.
+
+<Properties>
+  <Property name="id" type="string">
+    Unique identifier for the action (prefixed with "act").
+  </Property>
+  <Property name="label" type="string">
+    The button label shown to users. Actions without a `label` and `workflow_id` are hidden from the rendered dashboard.
+  </Property>
+  <Property name="workflow_id" type="string">
+    The id of the workflow to trigger when the action is clicked.
+  </Property>
+  <Property name="input_mappings" type="array">
+    Array of mappings from row columns to workflow inputs. Each mapping has a `workflow_input_key` (the workflow input to populate) and a `column` (the result column whose value is passed in). One mapping is expected per workflow input.
   </Property>
 </Properties>
 
@@ -110,9 +132,21 @@ Each panel in the dashboard contains:
                 "description": "Time range for the query"
               }
             ],
+            "actions": [
+              {
+                "label": "Restart host",
+                "workflow_id": "wf_123456789",
+                "input_mappings": [
+                  {
+                    "workflow_input_key": "host",
+                    "column": "hostname"
+                  }
+                ]
+              }
+            ],
             "details": {
               "__type__": "query",
-              "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+              "query": "SELECT hostname, cpu_usage FROM metrics WHERE time > now() - 1h",
               "credential_id": "cred_123456789"
             }
           }
@@ -137,9 +171,22 @@ Each panel in the dashboard contains:
               "description": "Time range for the query"
             }
           ],
+          "actions": [
+            {
+              "id": "act_123456789",
+              "label": "Restart host",
+              "workflow_id": "wf_123456789",
+              "input_mappings": [
+                {
+                  "workflow_input_key": "host",
+                  "column": "hostname"
+                }
+              ]
+            }
+          ],
           "details": {
             "__type__": "query",
-            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "query": "SELECT hostname, cpu_usage FROM metrics WHERE time > now() - 1h",
             "credential_id": "cred_123456789"
           }
         }
@@ -186,9 +233,22 @@ Each panel in the dashboard contains:
               "description": "Time range for the query"
             }
           ],
+          "actions": [
+            {
+              "id": "act_123456789",
+              "label": "Restart host",
+              "workflow_id": "wf_123456789",
+              "input_mappings": [
+                {
+                  "workflow_input_key": "host",
+                  "column": "hostname"
+                }
+              ]
+            }
+          ],
           "details": {
             "__type__": "query",
-            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "query": "SELECT hostname, cpu_usage FROM metrics WHERE time > now() - 1h",
             "credential_id": "cred_123456789"
           }
         }
@@ -254,9 +314,22 @@ Each panel in the dashboard contains:
               "description": "Time range for the query"
             }
           ],
+          "actions": [
+            {
+              "id": "act_123456789",
+              "label": "Restart host",
+              "workflow_id": "wf_123456789",
+              "input_mappings": [
+                {
+                  "workflow_input_key": "host",
+                  "column": "hostname"
+                }
+              ]
+            }
+          ],
           "details": {
             "__type__": "query",
-            "query": "SELECT cpu_usage FROM metrics WHERE time > now() - 1h",
+            "query": "SELECT hostname, cpu_usage FROM metrics WHERE time > now() - 1h",
             "credential_id": "cred_123456789"
           }
         }
