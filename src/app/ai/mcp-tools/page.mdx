@@ -1,0 +1,185 @@
+export const metadata = {
+  title: 'MCP Tools',
+  description:
+    'The catalog of tools the DevHub MCP server exposes to AI clients, grouped by what they do.',
+}
+
+# MCP Tools
+
+The DevHub [MCP server](/ai/mcp-server) exposes a fixed catalog of tools an AI client can call. Every tool runs as the authorized user, so it sees only the databases that user can access, honors [data-protection](/guides/data-protection) redaction, respects the per-database [AI caps and approval gate](/ai/governance), and is recorded in the audit log. {{ className: 'lead' }}
+
+<Note>
+Tools are the only MCP capability available today. MCP resources, prompts, and subscriptions are not yet exposed.
+</Note>
+
+## Read & discovery
+
+Tools that inspect databases, schema, and data without writing.
+
+### list_databases
+
+Lists the databases the AI may use: those with AI access enabled that the current user can access. Each database includes the AI-allowed credentials to run as — a credential's `id` is what `run_query` needs, and a credential whose `reviews_required` is greater than 0 means a query run with it is held for peer review instead of returning rows.
+
+This tool takes no parameters.
+
+### get_database_schema
+
+Gets the schema of a database — tables and their columns, types, primary and foreign keys, and indexes.
+
+<Properties>
+  <Property name="database_id" type="string, required">
+    The id of the database.
+  </Property>
+</Properties>
+
+### sample_table
+
+Returns a sample of rows from a table. Values are redacted per the user's data-protection policy and the number of rows is capped by the database's AI max-rows setting. If the query requires peer review, no rows are returned until it is approved.
+
+<Properties>
+  <Property name="database_id" type="string, required">
+    The id of the database.
+  </Property>
+  <Property name="table" type="string, required">
+    The table name.
+  </Property>
+  <Property name="limit" type="integer">
+    Max rows to return; capped by the database's AI max rows.
+  </Property>
+</Properties>
+
+### search_schema
+
+Searches table and column names across all AI-enabled databases the current user can access. Useful for locating where data lives before querying.
+
+<Properties>
+  <Property name="search" type="string, required">
+    Text to match against table and column names.
+  </Property>
+  <Property name="database_ids" type="array">
+    Optional list of database ids to restrict the search to.
+  </Property>
+</Properties>
+
+### get_data_protection
+
+Reports which columns of a database are redacted (hidden) or visible for the current user, so the agent knows what data it may and may not see.
+
+<Properties>
+  <Property name="database_id" type="string, required">
+    The id of the database.
+  </Property>
+</Properties>
+
+## Execution
+
+Running SQL through the standard QueryDesk query pipeline.
+
+### run_query
+
+Runs SQL through the standard query pipeline using a specific database credential and returns the result. The credential identifies its own database and must be AI-allowed in the database settings. Values are redacted per the user's data-protection policy and the number of rows is capped. A result too large to hold in memory returns an error instead of being returned.
+
+If the credential requires peer review, no rows are returned until the query is approved — you get back a `query_id` with status `pending_approval`. Once it is approved, call `run_query` again with that `query_id` (and nothing else) to run the exact approved SQL; it cannot be altered after approval. See [the approval model](/ai/governance#peer-review-approval) for the full flow.
+
+<Properties>
+  <Property name="credential_id" type="string">
+    The id of the AI-allowed database credential to run as.
+  </Property>
+  <Property name="sql" type="string">
+    The SQL to execute.
+  </Property>
+  <Property name="query_id" type="string">
+    Re-request a query that was returned as pending and has since been approved. Run it alone — the approved SQL is immutable, so `credential_id` and `sql` must be omitted.
+  </Property>
+</Properties>
+
+<Note>
+A call is either `credential_id` + `sql` (a fresh query) or `query_id` alone (re-running an approved query) — not both.
+</Note>
+
+### cancel_query
+
+Withdraws a pending query that was submitted for peer review and is no longer wanted. Only a query that has not executed can be withdrawn; once withdrawn it is removed and can no longer be approved or run.
+
+<Properties>
+  <Property name="query_id" type="string, required">
+    The id of the pending query to withdraw.
+  </Property>
+</Properties>
+
+## Saved queries & history
+
+Working with the team's saved queries and past query activity — the same things a person can see, never more.
+
+### list_saved_queries
+
+Lists the saved queries available to the current user — the organization's shared queries plus any private queries the user saved themselves. Returns titles and labels only, not the SQL; use `get_saved_query` to read a query's SQL.
+
+This tool takes no parameters.
+
+### get_saved_query
+
+Fetches a single saved query by id, including its SQL. Returns the query only when it belongs to the user's organization and is either shared or saved by the user themselves.
+
+<Properties>
+  <Property name="saved_query_id" type="string, required">
+    The id of the saved query to fetch.
+  </Property>
+</Properties>
+
+### save_query
+
+Saves a SQL query to the organization's query library so it can be reused later. Saved as the current user; mark it private to keep it visible only to them.
+
+<Properties>
+  <Property name="title" type="string, required">
+    A short, human-readable name for the query.
+  </Property>
+  <Property name="query" type="string, required">
+    The SQL to save.
+  </Property>
+  <Property name="private" type="boolean">
+    When true, only the saving user can see it. Defaults to false.
+  </Property>
+</Properties>
+
+### search_audit_log
+
+Searches executed queries for a database over a date range to see what ran and who ran it — useful for debugging "what changed in prod". Scoped to a database the user can access; returns the SQL plus who ran it, approvals, and review comments — never result rows. The date range is interpreted in the user's configured timezone. Returns at most the 100 most recent matches — narrow the date range or filters to see older activity.
+
+<Properties>
+  <Property name="database_id" type="string, required">
+    The id of the database to search.
+  </Property>
+  <Property name="start_date" type="string, required">
+    Inclusive start of the window, ISO-8601 date (YYYY-MM-DD).
+  </Property>
+  <Property name="end_date" type="string, required">
+    Inclusive end of the window, ISO-8601 date (YYYY-MM-DD).
+  </Property>
+  <Property name="user_id" type="string">
+    Only return queries run by this user.
+  </Property>
+  <Property name="query" type="string">
+    Only return queries whose SQL contains this text.
+  </Property>
+</Properties>
+
+### query_history
+
+Lists the current user's own queries executed against a database in a date range (newest first), with whether each query's result is still retained (available), was cleaned up (expired), or was never retained (never). Scoped to a database the user can access; returns the SQL only, never result rows.
+
+<Properties>
+  <Property name="database_id" type="string, required">
+    The id of the database whose history to list.
+  </Property>
+  <Property name="start_date" type="string, required">
+    Inclusive start of the window, ISO-8601 date (YYYY-MM-DD).
+  </Property>
+  <Property name="end_date" type="string, required">
+    Inclusive end of the window, ISO-8601 date (YYYY-MM-DD).
+  </Property>
+  <Property name="query" type="string">
+    Only return queries whose SQL contains this text.
+  </Property>
+</Properties>

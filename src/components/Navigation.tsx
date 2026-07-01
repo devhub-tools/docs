@@ -243,6 +243,14 @@ export const navigation: Array<NavGroup> = [
     ],
   },
   {
+    title: 'AI',
+    links: [
+      { title: 'MCP Server', href: '/ai/mcp-server' },
+      { title: 'MCP Tools', href: '/ai/mcp-tools' },
+      { title: 'AI Governance', href: '/ai/governance' },
+    ],
+  },
+  {
     title: 'Resources',
     links: [
       { title: 'Dashboards', href: '/resources/dashboards' },

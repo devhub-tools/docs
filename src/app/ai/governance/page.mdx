@@ -1,0 +1,70 @@
+export const metadata = {
+  title: 'AI Governance',
+  description:
+    'Control which databases the AI can use, cap what it can request, require peer review, and audit everything it runs.',
+}
+
+# AI Governance
+
+AI access to QueryDesk is off by default and opt-in per database. When you enable it, the AI runs as a real user and is bound by the same permissions, data protection, approval rules, and audit trail as a person — plus a set of AI-specific caps you control. This page covers the admin settings and the guardrails behind them. {{ className: 'lead' }}
+
+<Note>
+These controls apply to every AI surface — the [MCP server](/ai/mcp-server) and the in-app AI assistant both go through the same governed pipeline, so there is nothing to configure twice.
+</Note>
+
+## Enabling AI per database
+
+AI access is configured on each database's edit page, under **AI Configuration**. It is disabled by default: while it's off, the AI cannot see or query the database at all — it won't even appear in the AI's list of databases.
+
+<Properties>
+  <Property name="Enable AI access" type="default: off">
+    Master switch for this database. When disabled, the AI agent cannot see or query it. AI access is opt-in.
+  </Property>
+  <Property name="Max rows AI may request" type="default: 500">
+    The AI agent's queries are capped to at most this many rows. Applies to every AI query and sample against this database.
+  </Property>
+  <Property name="Allowed credentials" type="allowlist">
+    Only the credentials you check here may be used by the AI. The AI picks one of them to run as; a credential that isn't allowed is invisible to it.
+  </Property>
+</Properties>
+
+The allowed-credentials allowlist is how you scope the AI's power. Point it at a read-only credential and the AI can only read; allow a credential with elevated rights only if you also want the AI to be able to use them (subject to the approval gate below).
+
+## Per-query caps
+
+Beyond the row cap, two more limits protect your system automatically:
+
+- **Result size.** An AI query result that is too large to hold in memory fails with an error rather than being returned. The ceiling is an organization-wide setting (the AI result memory limit), so a single oversized result can never destabilize the instance.
+- **Timeout.** AI queries run under the credential's timeout, just like human queries.
+
+## Peer-review approval
+
+QueryDesk's existing peer-review model applies to AI queries unchanged. Each database credential has a **reviews required** count:
+
+- **`reviews_required = 0`** — queries run immediately and return results.
+- **`reviews_required = N` (N > 0)** — a query must collect **N approvals from other users** with approve permission before it can execute. **Self-review does not count** — the person (or AI acting as them) who submitted the query cannot approve their own.
+
+Because the AI acts as a user, an AI query against a credential that requires review follows the standard [pending queries](/guides/getting-started) flow:
+
+1. The AI submits a query; because review is required, **no rows are returned**. Instead the AI gets back a `query_id` with status `pending_approval`, and the query appears in the pending-queries list for a reviewer to approve.
+2. A reviewer approves the exact SQL. Approval only **unlocks** execution — for AI queries it does **not** auto-run.
+3. The AI re-requests the approved query by its `query_id`. The stored SQL is **immutable**, so the AI cannot smuggle in different SQL after approval, and results are returned to it live.
+
+If the AI decides a pending query is no longer wanted, it can withdraw it (the `cancel_query` tool) as long as it hasn't executed yet.
+
+<Note>
+While a query is awaiting peer review, its SQL is shown to the reviewer exactly as written — data-protection redaction is applied to *results*, not to the SQL a reviewer must approve.
+</Note>
+
+## Data protection
+
+AI queries are redacted per the user's [data-protection policy](/guides/data-protection), exactly like queries that user runs by hand. `get_data_protection` lets the AI see which columns are hidden versus visible for the current user before it queries, so it doesn't rely on data it will never be shown.
+
+## AI labeling and the audit log
+
+Every query records **how it originated**, so AI activity is never indistinguishable from human activity:
+
+- Queries run by a person are labeled as human.
+- Queries run through the in-app AI assistant or the MCP server are marked as AI-originated and carry a blue **AI** badge.
+
+The AI badge appears everywhere queries are listed — including the pending-queries list and the [audit log](/guides/getting-started) — so reviewers can tell at a glance that a query came from the AI, and every AI query is attributed to the user who authorized it. AI queries that originated from an in-app conversation are also linked back to that conversation for traceability.

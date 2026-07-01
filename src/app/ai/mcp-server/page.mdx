@@ -1,0 +1,225 @@
+export const metadata = {
+  title: 'MCP Server',
+  description:
+    'Connect an AI client to the DevHub MCP server over OAuth 2.1 to let it query your databases through QueryDesk.',
+}
+
+# MCP Server
+
+DevHub ships a built-in [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that exposes your QueryDesk databases to external AI clients — Claude Desktop, Cursor, and any other MCP-capable app. The AI can list databases, read schema, and run governed queries, all under the same access controls, data protection, and audit trail as a human user. {{ className: 'lead' }}
+
+<Note>
+The MCP server is served from your own DevHub instance. Everywhere below, replace `https://your-org.devhub.cloud` with the URL you use to sign in to DevHub.
+</Note>
+
+## The endpoint
+
+The MCP server is mounted at:
+
+```text {{ title: 'MCP endpoint' }}
+https://your-org.devhub.cloud/mcp
+```
+
+It speaks MCP over **streamable HTTP**. Most clients only need this URL — they discover the authorization server and register themselves automatically (see below).
+
+## Identity model
+
+An MCP session always acts as **the user who authorized it**. When you connect, you sign in through DevHub and consent to the connection; the AI then operates as your user. That means:
+
+- It can only see and query databases you have access to.
+- Every query is subject to your [data-protection policy](/guides/data-protection) redaction.
+- The AI's per-database caps and the peer-review approval gate apply exactly as they do to a person — see [AI Governance](/ai/governance).
+- Every query the AI runs is attributed to you in the [audit log](/ai/governance#ai-labeling-and-the-audit-log) and labeled as AI-originated.
+
+The AI is never a privileged service account — it inherits your permissions and nothing more.
+
+## Authorizing a client (OAuth 2.1)
+
+The MCP server is protected by an OAuth 2.1 authorization server built into DevHub. It supports the discovery and registration flow that modern MCP clients expect, so in practice you rarely configure any of this by hand.
+
+### Discovery
+
+Clients locate the authorization server and its endpoints from two `.well-known` metadata documents.
+
+### Protected-resource metadata {{ tag: 'GET', label: '/.well-known/oauth-protected-resource' }}
+
+<Row>
+  <Col>
+
+    Advertises the MCP resource and which authorization server protects it (RFC 9728). This is the first document a client fetches — it points the client at the authorization server below.
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/.well-known/oauth-protected-resource">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://your-org.devhub.cloud/.well-known/oauth-protected-resource
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "resource": "https://your-org.devhub.cloud/mcp",
+      "authorization_servers": ["https://your-org.devhub.cloud"],
+      "scopes_supported": ["mcp"],
+      "bearer_methods_supported": ["header"]
+    }
+    ```
+
+  </Col>
+</Row>
+
+### Authorization-server metadata {{ tag: 'GET', label: '/.well-known/oauth-authorization-server' }}
+
+<Row>
+  <Col>
+
+    Advertises the authorization, token, and registration endpoints, the supported grant types, and the PKCE methods (RFC 8414).
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/.well-known/oauth-authorization-server">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://your-org.devhub.cloud/.well-known/oauth-authorization-server
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "issuer": "https://your-org.devhub.cloud",
+      "authorization_endpoint": "https://your-org.devhub.cloud/oauth/authorize",
+      "token_endpoint": "https://your-org.devhub.cloud/oauth/token",
+      "registration_endpoint": "https://your-org.devhub.cloud/oauth/register",
+      "jwks_uri": "https://your-org.devhub.cloud/.well-known/jwks.json",
+      "scopes_supported": ["mcp"],
+      "response_types_supported": ["code"],
+      "grant_types_supported": ["authorization_code", "refresh_token"],
+      "code_challenge_methods_supported": ["S256"],
+      "token_endpoint_auth_methods_supported": [
+        "none",
+        "client_secret_basic",
+        "client_secret_post"
+      ]
+    }
+    ```
+
+  </Col>
+</Row>
+
+### Dynamic client registration
+
+Clients register themselves with the authorization server using [Dynamic Client Registration](https://datatracker.ietf.org/doc/html/rfc7591) (RFC 7591) — you don't create an OAuth client by hand. The client POSTs its metadata and gets back a `client_id` (and a `client_secret` for confidential clients).
+
+<Row>
+  <Col>
+
+    ### Request attributes
+
+    <Properties>
+      <Property name="client_name" type="string">
+        A human-readable name for the client, shown on the consent screen.
+      </Property>
+      <Property name="redirect_uris" type="array">
+        The redirect URIs the client will use in the authorization flow.
+      </Property>
+      <Property name="grant_types" type="array">
+        Requested grant types, e.g. `authorization_code`, `refresh_token`.
+      </Property>
+      <Property name="response_types" type="array">
+        Requested response types, e.g. `code`.
+      </Property>
+      <Property name="token_endpoint_auth_method" type="string">
+        How the client authenticates to the token endpoint: `none` (public client), `client_secret_basic`, or `client_secret_post`.
+      </Property>
+      <Property name="scope" type="string">
+        Requested scope. The MCP server uses `mcp`.
+      </Property>
+    </Properties>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/oauth/register">
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST https://your-org.devhub.cloud/oauth/register \
+      -H "Content-Type: application/json" \
+      -d '{
+        "client_name": "Claude Desktop",
+        "redirect_uris": ["https://client.example.com/callback"],
+        "grant_types": ["authorization_code", "refresh_token"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+        "scope": "mcp"
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "client_id": "oauth_client_abc123",
+      "client_id_issued_at": 1718000000,
+      "client_name": "Claude Desktop",
+      "redirect_uris": ["https://client.example.com/callback"],
+      "grant_types": ["authorization_code", "refresh_token"],
+      "response_types": ["code"],
+      "token_endpoint_auth_method": "none",
+      "scope": "mcp"
+    }
+    ```
+
+  </Col>
+</Row>
+
+### Authorization code + PKCE
+
+The client sends the user to `/oauth/authorize` with a **PKCE** challenge (only the `S256` method is supported). The user signs in through the normal DevHub login — including your organization's IdP if you use SSO — and approves a consent screen showing the client and the access it's requesting. DevHub redirects back with an authorization code, which the client exchanges at `/oauth/token` for an access token (and a refresh token). Access tokens are short-lived; clients use the refresh token to stay connected.
+
+<Warning>
+PKCE is required. The authorization server only advertises and accepts the `S256` code-challenge method.
+</Warning>
+
+## Connect a client
+
+Most MCP clients only need the endpoint URL — they run discovery, registration, and the OAuth flow for you. Point your client at `https://your-org.devhub.cloud/mcp`:
+
+<CodeGroup title="Add the DevHub MCP server">
+
+```bash {{ title: 'Claude Code' }}
+claude mcp add --transport http devhub https://your-org.devhub.cloud/mcp
+```
+
+```bash {{ title: 'Claude Desktop' }}
+# Settings → Connectors → Add custom connector
+# Name: DevHub
+# URL:  https://your-org.devhub.cloud/mcp
+```
+
+```json {{ title: 'Cursor' }}
+// ~/.cursor/mcp.json (global) or .cursor/mcp.json (per-project)
+{
+  "mcpServers": {
+    "devhub": {
+      "url": "https://your-org.devhub.cloud/mcp"
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+The first time you connect, your browser opens to the DevHub consent screen; approve it and the client is connected. From there the AI can call the [MCP tools](/ai/mcp-tools) — subject to the controls described in [AI Governance](/ai/governance).
+
+### Custom clients
+
+If you're building your own client rather than using an off-the-shelf one, complete the OAuth 2.1 flow described above and send the resulting access token as a bearer token on every request:
+
+```text {{ title: 'Authenticated MCP request' }}
+Authorization: Bearer <access_token>
+```

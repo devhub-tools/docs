@@ -55,8 +55,14 @@ The database model contains all the information about your database connections,
   <Property name="agent_id" type="string">
     The agent ID for connecting to databases inside private networks.
   </Property>
+  <Property name="ai_enabled" type="boolean">
+    Whether the AI agent may use this database. Defaults to `false` (opt-in). See [AI Governance](/ai/governance).
+  </Property>
+  <Property name="ai_max_rows" type="integer">
+    The maximum number of rows the AI agent's queries may return against this database. Defaults to `500`.
+  </Property>
   <Property name="credentials" type="array">
-    Array of database credentials with connection details.
+    Array of database credentials with connection details. Each credential includes `ai_allowed` (whether the AI may run as it) and `timeout`.
   </Property>
   <Property name="inserted_at" type="timestamp">
     Timestamp of when the database was created.
@@ -116,6 +122,12 @@ The database model contains all the information about your database connections,
       <Property name="agent_id" type="string">
         The agent ID for connecting to databases inside private networks.
       </Property>
+      <Property name="ai_enabled" type="boolean">
+        Whether the AI agent may use this database. Defaults to `false` (opt-in).
+      </Property>
+      <Property name="ai_max_rows" type="integer">
+        The maximum number of rows the AI agent's queries may return. Defaults to `500`.
+      </Property>
     </Properties>
 
   </Col>
@@ -163,11 +175,15 @@ The database model contains all the information about your database connections,
       "group": "Production",
       "slack_channel": null,
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 0,
           "default_credential": true
         }
@@ -215,11 +231,15 @@ The database model contains all the information about your database connections,
       "group": "Production",
       "slack_channel": null,
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 0,
           "default_credential": true
         }
@@ -327,8 +347,14 @@ The database model contains all the information about your database connections,
       <Property name="agent_id" type="string">
         The agent ID for connecting to databases inside private networks.
       </Property>
+      <Property name="ai_enabled" type="boolean">
+        Whether the AI agent may use this database. Defaults to `false` (opt-in).
+      </Property>
+      <Property name="ai_max_rows" type="integer">
+        The maximum number of rows the AI agent's queries may return. Defaults to `500`.
+      </Property>
       <Property name="credentials" type="array">
-        Array of database credentials with connection details.
+        Array of database credentials with connection details. Set `ai_allowed` on a credential to let the AI run as it.
       </Property>
     </Properties>
 
@@ -364,11 +390,15 @@ The database model contains all the information about your database connections,
       "group": "Production",
       "slack_channel": "#db-alerts",
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 0,
           "default_credential": true
         }
@@ -416,11 +446,15 @@ The database model contains all the information about your database connections,
       "group": "Production",
       "slack_channel": "#db-alerts",
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 1,
           "default_credential": true
         }
@@ -536,11 +570,15 @@ The database model contains all the information about your database connections,
       "group": null,
       "slack_channel": null,
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 1,
           "default_credential": true
         }
@@ -588,11 +626,15 @@ The database model contains all the information about your database connections,
       "group": null,
       "slack_channel": null,
       "agent_id": null,
+      "ai_enabled": false,
+      "ai_max_rows": 500,
       "credentials": [
         {
           "id": "crd_xyz789",
           "username": "app_user",
           "hostname": null,
+          "ai_allowed": false,
+          "timeout": null,
           "reviews_required": 1,
           "default_credential": true
         }
