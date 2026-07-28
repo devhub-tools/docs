@@ -66,11 +66,11 @@ Each panel in the dashboard contains:
 
 ### Action structure
 
-Actions appear as buttons on each row of a query panel's results. When clicked, they trigger a workflow, passing values from the row's columns as workflow inputs.
+Actions appear as buttons on each row of a query panel's results. When clicked, they trigger a workflow, populating each of the workflow's inputs either from the clicked row's columns or from values the user is prompted for.
 
 <Properties>
   <Property name="id" type="string">
-    Unique identifier for the action (prefixed with "act").
+    Unique identifier for the action.
   </Property>
   <Property name="label" type="string">
     The button label shown to users. Actions without a `label` and `workflow_id` are hidden from the rendered dashboard.
@@ -79,7 +79,26 @@ Actions appear as buttons on each row of a query panel's results. When clicked, 
     The id of the workflow to trigger when the action is clicked.
   </Property>
   <Property name="input_mappings" type="array">
-    Array of mappings from row columns to workflow inputs. Each mapping has a `workflow_input_key` (the workflow input to populate) and a `column` (the result column whose value is passed in). One mapping is expected per workflow input.
+    Array of mappings that populate the workflow's inputs. One mapping is expected per workflow input. See [Input mapping structure](#input-mapping-structure) below.
+  </Property>
+</Properties>
+
+### Input mapping structure
+
+Each mapping fills a single workflow input. By default the value comes from a column of the clicked row. Set `prompt_user` to `true` to instead ask the user for the value when they click the button — in that case the dashboard opens a modal with one field per prompted input and only starts the workflow once the user submits it.
+
+<Properties>
+  <Property name="workflow_input_key" type="string">
+    The key of the workflow input this mapping populates.
+  </Property>
+  <Property name="column" type="string">
+    The result column whose value is passed in. Used when `prompt_user` is false.
+  </Property>
+  <Property name="prompt_user" type="boolean">
+    Whether to prompt the user for this value when the action is clicked instead of reading it from the row. Defaults to false.
+  </Property>
+  <Property name="prompt" type="string">
+    The label shown above the field in the prompt modal. Used when `prompt_user` is true, and falls back to `workflow_input_key` when blank.
   </Property>
 </Properties>
 
@@ -140,6 +159,11 @@ Actions appear as buttons on each row of a query panel's results. When clicked, 
                   {
                     "workflow_input_key": "host",
                     "column": "hostname"
+                  },
+                  {
+                    "workflow_input_key": "reason",
+                    "prompt_user": true,
+                    "prompt": "Why are you restarting this host?"
                   }
                 ]
               }
@@ -173,13 +197,21 @@ Actions appear as buttons on each row of a query panel's results. When clicked, 
           ],
           "actions": [
             {
-              "id": "act_123456789",
+              "id": "6ad2b0e2-1f2e-4a3f-9a1d-2f1c9a0b7e11",
               "label": "Restart host",
               "workflow_id": "wf_123456789",
               "input_mappings": [
                 {
                   "workflow_input_key": "host",
-                  "column": "hostname"
+                  "column": "hostname",
+                  "prompt_user": false,
+                  "prompt": null
+                },
+                {
+                  "workflow_input_key": "reason",
+                  "column": null,
+                  "prompt_user": true,
+                  "prompt": "Why are you restarting this host?"
                 }
               ]
             }
@@ -235,13 +267,21 @@ Actions appear as buttons on each row of a query panel's results. When clicked, 
           ],
           "actions": [
             {
-              "id": "act_123456789",
+              "id": "6ad2b0e2-1f2e-4a3f-9a1d-2f1c9a0b7e11",
               "label": "Restart host",
               "workflow_id": "wf_123456789",
               "input_mappings": [
                 {
                   "workflow_input_key": "host",
-                  "column": "hostname"
+                  "column": "hostname",
+                  "prompt_user": false,
+                  "prompt": null
+                },
+                {
+                  "workflow_input_key": "reason",
+                  "column": null,
+                  "prompt_user": true,
+                  "prompt": "Why are you restarting this host?"
                 }
               ]
             }
@@ -316,13 +356,21 @@ Actions appear as buttons on each row of a query panel's results. When clicked, 
           ],
           "actions": [
             {
-              "id": "act_123456789",
+              "id": "6ad2b0e2-1f2e-4a3f-9a1d-2f1c9a0b7e11",
               "label": "Restart host",
               "workflow_id": "wf_123456789",
               "input_mappings": [
                 {
                   "workflow_input_key": "host",
-                  "column": "hostname"
+                  "column": "hostname",
+                  "prompt_user": false,
+                  "prompt": null
+                },
+                {
+                  "workflow_input_key": "reason",
+                  "column": null,
+                  "prompt_user": true,
+                  "prompt": "Why are you restarting this host?"
                 }
               ]
             }
