@@ -17,6 +17,7 @@ The data protection system operates at the query processing layer, where all que
 1. **Data Never Leaves the Database**: All sensitive data remains within your database infrastructure
 2. **Query Rewriting**: Queries are dynamically modified to enforce protection policies
 3. **Allow-List Validation**: Only pre-approved SQL syntax and operations are permitted
+4. **Fail Closed**: Anything the rewriter cannot fully model is rejected rather than passed through
 5. **Default Protection**: By default, all columns are hidden unless explicitly allowed if a policy is assigned
 
 ## How It Works
@@ -50,6 +51,37 @@ SELECT id FROM users WHERE email = 'test@example.com';
 -- Rewritten query with data protection
 SELECT id FROM users WHERE '***' = 'test@example.com';
 ```
+
+## Statements That Are Rejected
+
+Protection can only be enforced on statements the rewriter fully understands: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and the unions and subqueries built from them. Anything else is rejected with an error rather than forwarded, because a statement that can't be rewritten can't be masked.
+
+In practice this means the following are refused while a policy is in effect:
+
+```sql
+PREPARE p AS SELECT ssn FROM users;  -- and the matching EXECUTE
+DECLARE c CURSOR FOR SELECT ssn FROM users;  -- and FETCH / MOVE
+COPY users TO STDOUT;
+DO $$ ... $$;
+CALL some_procedure();
+```
+
+Session and transaction statements carry no row data, so they still pass through unchanged and drivers keep working: `SET`, `SHOW`, `RESET`, `BEGIN`, `COMMIT`, and `ROLLBACK`.
+
+This applies to every path that runs a protected query — the QueryDesk web UI, the Postgres proxy, and the [MCP `run_query` tool](/ai/mcp-tools).
+
+## System Tables
+
+System catalogs (`pg_stats`, `pg_class`, `information_schema.columns`, MySQL's `mysql.user`, and so on) can expose real column values — `pg_stats`, for example, publishes sampled values from every table. They are therefore blocked by default: with a policy assigned, a query against a system table fails closed.
+
+When a tool genuinely needs catalog access, list the tables it needs under **Allowed system tables** in the policy editor. Each entry is either a table name or a schema/database name that allows everything inside it:
+
+```
+pg_class
+information_schema
+```
+
+Allowlisted tables bypass masking entirely, so only add catalogs you have confirmed do not surface protected data. The allowlist is per policy, so one role can be granted catalog access without widening it for everyone.
 
 ## Policy Assignment and Evaluation
 Data protection policies can be assigned to individual users or roles. The system evaluates policies in the following order:

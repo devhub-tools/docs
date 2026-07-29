@@ -41,7 +41,10 @@ The database model contains all the information about your database connections,
     The database name to connect to.
   </Property>
   <Property name="ssl" type="boolean">
-    Whether SSL is enabled for the connection.
+    Whether SSL is enabled for the connection. When a CA certificate is configured the server's certificate chain is verified against it; without one the connection is encrypted but unverified.
+  </Property>
+  <Property name="verify_server_hostname" type="boolean">
+    Whether the server certificate must also match `hostname` (Postgres `sslmode=verify-full`). Requires a CA certificate. Defaults to `false`, since managed database services often present a certificate that doesn't match the endpoint hostname.
   </Property>
   <Property name="restrict_access" type="boolean">
     Whether access to this database should be explicitly granted to users.
@@ -108,7 +111,10 @@ The database model contains all the information about your database connections,
         The port number for the database connection.
       </Property>
       <Property name="ssl" type="boolean">
-        Whether SSL is enabled for the connection.
+        Whether SSL is enabled for the connection. When a CA certificate is configured the server's certificate chain is verified against it; without one the connection is encrypted but unverified.
+      </Property>
+      <Property name="verify_server_hostname" type="boolean">
+        Whether the server certificate must also match `hostname` (Postgres `sslmode=verify-full`). Requires a CA certificate. Defaults to `false`, since managed database services often present a certificate that doesn't match the endpoint hostname.
       </Property>
       <Property name="restrict_access" type="boolean">
         Whether access to this database should be explicitly granted to users.
@@ -171,6 +177,7 @@ The database model contains all the information about your database connections,
       "port": 5432,
       "database": "myapp_production",
       "ssl": true,
+      "verify_server_hostname": false,
       "restrict_access": false,
       "group": "Production",
       "slack_channel": null,
@@ -227,6 +234,7 @@ The database model contains all the information about your database connections,
       "port": 5432,
       "database": "myapp_production",
       "ssl": true,
+      "verify_server_hostname": false,
       "restrict_access": false,
       "group": "Production",
       "slack_channel": null,
@@ -333,7 +341,10 @@ The database model contains all the information about your database connections,
         The database name to connect to.
       </Property>
       <Property name="ssl" type="boolean">
-        Whether SSL is enabled for the connection.
+        Whether SSL is enabled for the connection. When a CA certificate is configured the server's certificate chain is verified against it; without one the connection is encrypted but unverified.
+      </Property>
+      <Property name="verify_server_hostname" type="boolean">
+        Whether the server certificate must also match `hostname` (Postgres `sslmode=verify-full`). Requires a CA certificate. Defaults to `false`, since managed database services often present a certificate that doesn't match the endpoint hostname.
       </Property>
       <Property name="restrict_access" type="boolean">
         Whether access to this database should be explicitly granted to users.
@@ -566,6 +577,7 @@ The database model contains all the information about your database connections,
       "port": 5432,
       "database": "myapp_production",
       "ssl": true,
+      "verify_server_hostname": false,
       "restrict_access": false,
       "group": null,
       "slack_channel": null,
@@ -622,6 +634,7 @@ The database model contains all the information about your database connections,
       "port": 5432,
       "database": "myapp_production",
       "ssl": true,
+      "verify_server_hostname": false,
       "restrict_access": false,
       "group": null,
       "slack_channel": null,
