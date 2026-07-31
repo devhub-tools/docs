@@ -167,7 +167,7 @@ Searches executed queries for a database over a date range to see what ran and w
 
 ### query_history
 
-Lists the current user's own queries executed against a database in a date range (newest first), with whether each query's result is still retained (available), was cleaned up (expired), or was never retained (never). Scoped to a database the user can access; returns the SQL only, never result rows.
+Lists the current user's own queries executed against a database in a date range (newest first), with whether each query's result is still retained (available), was cleaned up (expired), or was never retained (never). Scoped to a database the user can access; returns the SQL only, never result rows — use `get_query_result` for an available result.
 
 <Properties>
   <Property name="database_id" type="string, required">
@@ -181,5 +181,73 @@ Lists the current user's own queries executed against a database in a date range
   </Property>
   <Property name="query" type="string">
     Only return queries whose SQL contains this text.
+  </Property>
+</Properties>
+
+### get_query_result
+
+Returns the retained result of one of the current user's own past queries, found via `query_history`. Only queries that asked for their result to be kept have one, and it is dropped once the database's retention period passes. Rows come back exactly as `run_query` returns them, so they can be passed straight to `share_query`. The number of rows is capped by the database's AI limit.
+
+<Properties>
+  <Property name="query_id" type="string, required">
+    The id of the query whose retained result to return.
+  </Property>
+</Properties>
+
+## Shared queries
+
+Turning a query and its result into a link the user can open, keep, and pass on. A shared query is only openable by people signed in to the organization — there is no anonymous link.
+
+### share_query
+
+Shares a query with the rest of the organization and returns a link. To share the result too, either copy the columns and rows from a run that already happened into `result_columns` and `result_rows`, or set `rerun` to have the tool run the SQL itself. A rerun is refused when the credential requires peer review, and write statements are never rerun — those share the SQL alone and report `results_omitted_reason`. Results can only be stored when the database allows query results to be retained.
+
+<Properties>
+  <Property name="credential_id" type="string, required">
+    The id of the AI-allowed credential the query belongs to.
+  </Property>
+  <Property name="sql" type="string, required">
+    The SQL to share.
+  </Property>
+  <Property name="rerun" type="boolean">
+    When true, run the SQL and store its result on the share. Leave it off and pass `result_columns` and `result_rows` instead when the query has already been run. Defaults to false.
+  </Property>
+  <Property name="result_columns" type="array">
+    The columns of an earlier result, copied from `run_query` or `get_query_result`.
+  </Property>
+  <Property name="result_rows" type="array">
+    The rows of an earlier result, copied verbatim from `run_query` or `get_query_result`.
+  </Property>
+  <Property name="expires_in_days" type="integer">
+    Stop the link working after this many days. Omit for a share that never expires.
+  </Property>
+</Properties>
+
+### list_shared_queries
+
+Lists the shared queries the current user can open — the organization's unrestricted shares plus any restricted ones shared with them or created by them. Expired shares are left out. Returns each share's link and SQL, but never its stored result rows.
+
+This tool takes no parameters.
+
+### get_shared_query
+
+Reads one shared query: its SQL, link, and expiry. Pass `include_results` to also return the rows frozen into the share when it was created.
+
+<Properties>
+  <Property name="shared_query_id" type="string, required">
+    The id of the shared query to read.
+  </Property>
+  <Property name="include_results" type="boolean">
+    When true, also return the share's stored result rows. Defaults to false.
+  </Property>
+</Properties>
+
+### delete_shared_query
+
+Deletes a shared query, so its link stops working. The current user must have created the share, unless they are an organization super admin.
+
+<Properties>
+  <Property name="shared_query_id" type="string, required">
+    The id of the shared query to delete.
   </Property>
 </Properties>
