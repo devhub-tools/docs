@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <>
       <HeroPattern />
-      <div className="mx-auto flex h-full max-w-xl flex-col items-center justify-center py-16 text-center">
+      <div className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-4 py-16 text-center">
         <p className="text-sm font-semibold text-zinc-900 dark:text-white">
           404
         </p>
