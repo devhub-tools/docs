@@ -22,7 +22,15 @@ function AnchorIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
   )
 }
 
-function Eyebrow({ tag, label, version }: { tag?: string; label?: string, version?: string }) {
+function Eyebrow({
+  tag,
+  label,
+  version,
+}: {
+  tag?: string
+  label?: string
+  version?: string
+}) {
   if (!tag && !label) {
     return null
   }
@@ -40,7 +48,7 @@ function Eyebrow({ tag, label, version }: { tag?: string; label?: string, versio
           <span className="font-mono text-xs text-zinc-400">{label}</span>
         )}
       </div>
-    </div >
+    </div>
   )
 }
 

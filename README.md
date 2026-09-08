@@ -18,6 +18,48 @@ npm run dev
 
 Finally, open [http://localhost:3000](http://localhost:3000) in your browser to view the website.
 
+## One deployment, several products
+
+This app serves the docs for every Devhub product, and the request's `Host`
+decides which one a visitor gets:
+
+| host                 | content              |
+| -------------------- | -------------------- |
+| `docs.querydesk.io`  | `src/app/querydesk/` |
+| `docs.terradesk.io`  | `src/app/terradesk/` |
+
+`src/middleware.ts` rewrites an incoming path onto the right subtree, so the
+prefix never appears in a URL — `docs.terradesk.io/guides/security` serves
+`src/app/terradesk/guides/security/page.mdx`. Asking for a prefix directly
+redirects it away, so one domain can never serve another product's pages.
+
+Everything that differs per product — the product name, navigation, home page
+cards, and the hosts it answers to — lives in `src/lib/sites.ts`. Server
+components read the host with `headers()`; client components use `useSite()`
+from `src/components/SiteProvider.tsx`, and `usePagePath()` instead of
+`usePathname()` so links and active state work on the public path.
+
+To add a product: add an entry to `sites.ts` and create `src/app/<id>/`.
+
+### Running both locally
+
+The dev server only ever shows one product at a time, and the hostname you use
+decides which. Any hostname starting with a site's id selects it, so with the
+server on port 3000:
+
+- `http://localhost:3000` — QueryDesk (the default for an unrecognized host)
+- `http://terradesk.localhost:3000` — TerraDesk
+
+Use whichever port Next reports on startup; a `PORT` in the environment will
+change it.
+
+Chrome and Firefox resolve `*.localhost` on their own. If yours does not
+(Safari, for one), add a line to `/etc/hosts`:
+
+```
+127.0.0.1 terradesk.localhost querydesk.localhost
+```
+
 ## Customizing
 
 You can start editing this template by modifying the files in the `/src` folder. The site will auto-update as you edit these files.

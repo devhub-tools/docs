@@ -49,6 +49,9 @@ The database model contains all the information about your database connections,
   <Property name="restrict_access" type="boolean">
     Whether access to this database should be explicitly granted to users.
   </Property>
+  <Property name="review_bypass_allowed" type="boolean">
+    Whether a super admin may run their own query that hasn't met the `reviews_required` on its credential, by explicitly acknowledging the override. Every bypass is recorded against the query and shown in the audit log. Defaults to `false`.
+  </Property>
   <Property name="group" type="string">
     The group this database belongs to, used for UI grouping.
   </Property>
@@ -119,6 +122,9 @@ The database model contains all the information about your database connections,
       <Property name="restrict_access" type="boolean">
         Whether access to this database should be explicitly granted to users.
       </Property>
+      <Property name="review_bypass_allowed" type="boolean">
+        Whether a super admin may run their own query that hasn't met the `reviews_required` on its credential, by explicitly acknowledging the override. Every bypass is recorded and shown in the audit log. Defaults to `false`.
+      </Property>
       <Property name="group" type="string">
         The group this database belongs to, used for UI grouping.
       </Property>
@@ -179,6 +185,7 @@ The database model contains all the information about your database connections,
       "ssl": true,
       "verify_server_hostname": false,
       "restrict_access": false,
+      "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": null,
       "agent_id": null,
@@ -236,6 +243,7 @@ The database model contains all the information about your database connections,
       "ssl": true,
       "verify_server_hostname": false,
       "restrict_access": false,
+      "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": null,
       "agent_id": null,
@@ -349,6 +357,9 @@ The database model contains all the information about your database connections,
       <Property name="restrict_access" type="boolean">
         Whether access to this database should be explicitly granted to users.
       </Property>
+      <Property name="review_bypass_allowed" type="boolean">
+        Whether a super admin may run their own query that hasn't met the `reviews_required` on its credential, by explicitly acknowledging the override. Every bypass is recorded and shown in the audit log. Defaults to `false`.
+      </Property>
       <Property name="group" type="string">
         The group this database belongs to, used for UI grouping.
       </Property>
@@ -398,6 +409,7 @@ The database model contains all the information about your database connections,
       "database": "myapp_production",
       "ssl": true,
       "restrict_access": true,
+      "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": "#db-alerts",
       "agent_id": null,
@@ -454,6 +466,7 @@ The database model contains all the information about your database connections,
       "database": "myapp_production",
       "ssl": true,
       "restrict_access": true,
+      "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": "#db-alerts",
       "agent_id": null,
@@ -540,6 +553,9 @@ The database model contains all the information about your database connections,
       <Property name="reviews_required" type="integer">
         Number of reviews required for queries on this database. Defaults to 0.
       </Property>
+      <Property name="review_bypass_allowed" type="boolean">
+        Whether a super admin may run their own query that hasn't met `reviews_required`, by explicitly acknowledging the override. Every bypass is recorded and shown in the audit log. Defaults to `false`, and reverts to it when omitted.
+      </Property>
     </Properties>
 
   </Col>
@@ -561,7 +577,8 @@ The database model contains all the information about your database connections,
         "username": "app_user",
         "password": "secure_password",
         "ssl": "enabled",
-        "reviews_required": 1
+        "reviews_required": 1,
+        "review_bypass_allowed": true
       }'
     ```
 
@@ -579,6 +596,7 @@ The database model contains all the information about your database connections,
       "ssl": true,
       "verify_server_hostname": false,
       "restrict_access": false,
+      "review_bypass_allowed": false,
       "group": null,
       "slack_channel": null,
       "agent_id": null,
@@ -636,6 +654,7 @@ The database model contains all the information about your database connections,
       "ssl": true,
       "verify_server_hostname": false,
       "restrict_access": false,
+      "review_bypass_allowed": false,
       "group": null,
       "slack_channel": null,
       "agent_id": null,

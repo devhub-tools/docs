@@ -1,0 +1,123 @@
+export const metadata = {
+  title: 'Plans and Applies',
+  description:
+    'How a TerraDesk plan is created, what its statuses mean, when one plan supersedes another, and how targeted plans and state operations work.',
+}
+
+# Plans and Applies
+
+A **plan** is a single execution lifecycle of `terraform plan`, and optionally the `terraform apply` that follows it. This page covers where plans come from, what happens to them, and the operations available on a workspace's state. {{ className: 'lead' }}
+
+## Triggers
+
+Every plan records what caused it:
+
+<Properties>
+  <Property name="manual" type="trigger">
+    Someone started it from the UI, on a branch they picked.
+  </Property>
+  <Property name="pipeline" type="trigger">
+    A GitHub webhook started it — a push, or a pull request being opened or synchronized — because a file changed under the workspace's path or one of its trigger paths.
+  </Property>
+  <Property name="drift" type="trigger">
+    The drift schedule, or **Run now** on the drift page. These are [drift runs](/guides/drift-detection), not plans, and follow a different lifecycle entirely.
+  </Property>
+</Properties>
+
+A push only triggers a plan on the repository's default branch; on other branches it is the pull request that triggers one, when it is opened or synchronized. Closing a pull request cancels the pending plans on its branch.
+
+Pipeline plans only queue for apply automatically when the workspace has **Run plans automatically** turned on. Either way they go through exactly the same apply gate as a manual plan.
+
+## Statuses
+
+```
+queued → running → planned → applied
+                 ↘ failed
+                 ↘ canceled
+```
+
+<Properties>
+  <Property name="queued" type="status">
+    The plan exists and a Job is being scheduled for it.
+  </Property>
+  <Property name="running" type="status">
+    A Job is executing — either the plan, or the apply once a plan has been claimed.
+  </Property>
+  <Property name="planned" type="status">
+    Terraform produced a plan and it is waiting on a human. This is the only status an apply can start from.
+  </Property>
+  <Property name="applied" type="status">
+    The apply completed.
+  </Property>
+  <Property name="failed" type="status">
+    A container exited non-zero. Retry re-runs the plan as a new attempt.
+  </Property>
+  <Property name="canceled" type="status">
+    Someone canceled it, or it was superseded.
+  </Property>
+</Properties>
+
+## What a plan job does
+
+1. **git** — a shallow clone of the branch into the shared `/workspace` volume.
+2. **Your init containers**, in the order you configured them.
+3. **init** — `terraform init -input=false`, plus any init args.
+4. **plan** — `terraform plan -out plan.out`, with the log streamed to the plan page live.
+5. **plan-json** — `terraform show -json plan.out`, reduced to one address and one action per changed resource.
+6. **upload-plan** — `plan.out` is posted back to Devhub so the apply Job can retrieve it.
+
+The apply Job then downloads that exact `plan.out` and runs `terraform apply` against it, followed by a `terraform state list` to reconcile the workspace's resource inventory.
+
+<Note>
+The log you read and the data the system decides on come from different places on purpose. The log is Terraform's own colored, attribute-level output. The apply gate reads `show -json`, so nothing depends on parsing English prose that a Terraform release could reword.
+</Note>
+
+## Resource changes
+
+Each plan stores the operations it will perform: `create`, `update`, `delete`, or `replace`. A replace is one change, not a delete plus a create — TerraDesk does not distinguish create-before-destroy from destroy-before-create. Data sources are excluded.
+
+These stored changes are what [resource policies](/guides/approvals#resource-policies) match against.
+
+## Supersession
+
+A saved `plan.out` stops describing the world when either the code moves or the state moves, so TerraDesk cancels plans on those events rather than on a new plan simply arriving:
+
+| Event | Cancels |
+| --- | --- |
+| A new full plan, from a webhook or by hand | `queued` and `planned` **full** plans on the same branch |
+| A new targeted plan | nothing |
+| An apply claiming a plan | every other `queued` or `planned` plan in the workspace, on any branch |
+| A drift run | nothing — and nothing cancels it |
+
+Cancel-on-apply runs inside the apply claim itself, in the same transaction, so a plan cannot start applying without the others being canceled in the same breath.
+
+<Note>
+Targeted plans neither supersede nor are superseded. Their scope is deliberately narrow, and only the person who chose it knows whether a new commit touches it. An apply is the backstop: the moment state actually moves, they go.
+</Note>
+
+## Targeted plans
+
+**Plan specific resources** on a workspace runs `terraform plan` with `-target` for the resources you tick. The list you pick from is the workspace's **resource inventory** — TerraDesk's own record of the addresses in that workspace's state.
+
+A targeted plan is an ordinary plan in every other respect: it goes through the whole apply gate, and its apply reconciles the inventory like any other.
+
+## Resource inventory
+
+The inventory is reconciled from `terraform state list`:
+
+- On demand, from the workspace page.
+- At the end of every apply.
+- After a **failed** apply — the pod stops before the state list runs, which is exactly when the inventory is most likely to be wrong, so TerraDesk kicks off a refresh instead.
+
+Data sources are never part of it.
+
+## State operations
+
+- **Unlock** — runs `terraform force-unlock` when a run was killed mid-apply and left the state lock held.
+- **Move** — runs `terraform state mv`, for when a resource has been renamed or moved between modules in the configuration.
+
+Both are ordinary Terraform operations against your backend; TerraDesk only runs them for you and records that they happened.
+
+## Retry
+
+A `failed` plan can be retried, which re-runs it as a new attempt on the same branch. A drift run cannot be retried, approved, canceled, or applied.

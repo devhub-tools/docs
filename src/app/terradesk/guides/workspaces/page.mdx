@@ -1,0 +1,152 @@
+export const metadata = {
+  title: 'Workspaces',
+  description:
+    'Configure the repository, container image, init containers, environment variables, secrets, and cloud identity a TerraDesk workspace runs with.',
+}
+
+# Workspaces
+
+A workspace is a unit of Terraform state: a code path in a GitHub repository, the container configuration it runs with, and the approvals its applies require. Everything on this page is per workspace. {{ className: 'lead' }}
+
+<Note>
+Workspaces can also be managed with Terraform using the official provider: [devhub_terradesk_workspace](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/terradesk_workspace).
+</Note>
+
+## Repository and paths
+
+### Path
+
+`path` is the directory `terraform init`, `plan`, and `apply` run in, relative to the repository root. It is also, on its own, what decides whether a push starts a plan: a change under it triggers this workspace.
+
+### Trigger paths
+
+Terraform in one directory often reads files from another — shared modules, a `tfvars` directory, a policy bundle. **Trigger paths** are additional repository paths that also start a plan when a push or pull request changes a file under them.
+
+They are additive and prefix-matched, exactly like `path`:
+
+- Declaring a trigger path never stops `path` itself from triggering.
+- A workspace with no `path` at all still plans on any change.
+- A trigger path only decides **whether** to plan. The working directory is always `path`.
+
+```hcl
+resource "devhub_terradesk_workspace" "prod" {
+  name       = "prod"
+  repository = "acme/infrastructure"
+  path       = "environments/prod"
+
+  trigger_paths = [
+    { path = "modules" },
+    { path = "policies" },
+  ]
+}
+```
+
+## Containers
+
+### Docker image
+
+`docker_image` is the image the `init`, `plan`, and `apply` containers run — `hashicorp/terraform:1.10`, an OpenTofu image, or your own image with the tooling your configuration needs baked in. Pin a tag; a floating tag means two runs of the same commit can use different binaries.
+
+### Command override
+
+`command` replaces the image's **entrypoint** on the `init`, `plan`, and `apply` containers. The Terraform arguments — `init -input=false`, `plan -out plan.out`, `apply /workspace/plan.out` — are appended to it unchanged.
+
+Because it replaces the entrypoint rather than being prepended to it, the override has to name the terraform binary itself:
+
+```
+op run -- terraform
+```
+
+Leave it blank to use the image's own entrypoint.
+
+### Init containers
+
+An **init container** runs after the repository checkout and before `terraform init`, in the order you configure. Use one to stage tooling or credentials the Terraform containers need. It shares the run's `/workspace` and `/home/terradesk` volumes and the same secret environment.
+
+```hcl
+init_containers = [
+  {
+    name    = "install-op"
+    image   = "1password/op:2"
+    command = "sh -c \"cp /usr/local/bin/op /home/terradesk/bin/\""
+  }
+]
+```
+
+<Warning>
+A binary staged this way has to be able to run in the Terraform image. The official Terraform and OpenTofu images are Alpine, so a glibc-linked binary fails at exec with `no such file or directory`. Use a statically linked build, or one built against musl.
+</Warning>
+
+Container names must be lowercase alphanumeric with `-`, unique within the workspace, and not one of the names TerraDesk uses itself: `git`, `init`, `plan`, `apply`, `upload-plan`, `download-plan`.
+
+### Resources
+
+`cpu_requests` and `memory_requests` are passed straight through to the Job's pod spec, so they take the usual Kubernetes values (`100m`, `512M`). They default to `100m` and `512M`, which is enough for most configurations but not for a very large state.
+
+## Variables and secrets
+
+### Environment variables
+
+Plaintext values, exposed to every container under their literal name. Use them for anything you would be comfortable reading off the workspace settings page.
+
+### Secrets
+
+Encrypted values. They are stored with AES-256-GCM under your install's own key, and delivered to the containers through a Kubernetes Secret in Devhub's namespace that is written immediately before each run. A secret comes in two shapes:
+
+- **Terraform variable secret** (the default) — exposed as `TF_VAR_<name>`, so Terraform picks it up as an input variable.
+- **Raw secret** — exposed under its literal name, for tooling that reads its own environment, such as `OP_SERVICE_ACCOUNT_TOKEN`.
+
+```hcl
+secrets = [
+  {
+    name  = "database_password"
+    value = var.database_password
+  },
+  {
+    # raw secrets skip the TF_VAR_ prefix
+    name  = "OP_SERVICE_ACCOUNT_TOKEN"
+    value = var.op_service_account_token
+    raw   = true
+  }
+]
+```
+
+<Note>
+Secret values are never returned by the API or shown again in the UI after they are saved.
+</Note>
+
+## Workload identity
+
+On Google Cloud, a workspace can authenticate with **workload identity** instead of holding a service account key. TerraDesk mints a short-lived token for the Job's service account and exchanges it for credentials on the service account you name, so there is no long-lived cloud key anywhere in the install.
+
+```hcl
+workload_identity = {
+  enabled               = true
+  service_account_email = "devhub@my-project.iam.gserviceaccount.com"
+  provider              = google_iam_workload_identity_pool_provider.devhub.name
+}
+```
+
+The provider must be a full workload identity pool provider id — Google builds the token audience directly from it:
+
+```
+projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/providers/${PROVIDER}
+```
+
+See the [Terraform provider docs](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/terradesk_workspace) for a complete example including the Google resources.
+
+## Agents
+
+By default a workspace's Jobs run in the same cluster as Devhub. When the infrastructure you are managing lives somewhere Devhub cannot reach — a separate cluster, a different account, an isolated network — assign the workspace an **agent**. The agent runs in that cluster, opens an outbound connection to Devhub, and runs the workspace's Jobs there. Nothing inbound to that cluster has to be opened.
+
+## Notifications
+
+- **Slack channel** — where a plan posts when it reaches `planned` and is waiting on a human. The message is then reacted on as the plan moves: ✅ once the apply gate passes, 🚀 once applied, ❌ once canceled.
+- **Notify on** — `all_plans`, or `default_branch` to announce only plans on the repository's default branch. This filters which plans are announced, never which may apply.
+- **Drift Slack channel** — where [drift runs](/guides/drift-detection) post, and only when they find drift.
+
+All three require the Slack integration.
+
+## Archiving
+
+Deleting a workspace from the UI archives it: the workspace stops running and disappears from the list, but its plans — and the record of who approved them — are kept.

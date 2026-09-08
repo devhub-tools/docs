@@ -1,0 +1,87 @@
+export const metadata = {
+  title: 'Drift Detection',
+  description:
+    'Run a scheduled refresh-only check that reports what changed outside Terraform, and reconcile it through the normal approval gate.',
+}
+
+# Drift Detection
+
+Drift detection answers one question: **did anyone change this infrastructure outside of Terraform?** It runs on a schedule you set per workspace, reports what it found, and never changes anything. {{ className: 'lead' }}
+
+## A drift run is not a plan
+
+A drift run runs `terraform plan -refresh-only`. That refreshes state and diffs it against the **prior state**, ignoring the configuration — so what comes back is exactly what changed outside Terraform, and nothing else.
+
+An ordinary `terraform plan` cannot answer the question, because it also diffs against the configuration: a workspace whose branch is simply ahead of what was applied would report as drifted.
+
+A drift run has its own lifecycle:
+
+```
+queued → running → drifted | in_sync | failed
+```
+
+It never reaches `planned` or `applied`. It refuses apply, approve, cancel, and retry. It is kept out of the workspace's plan history and out of the workspace's latest plan, so a nightly run can never make the workspace list say "in sync" while a real plan is waiting to apply.
+
+It also sits outside supersession entirely: a drift run cancels nothing, and nothing cancels a drift run.
+
+## Configuring it
+
+On the workspace's settings, enable **Drift detection** and give it:
+
+<Properties>
+  <Property name="Cron expression" type="string">
+    When the check runs, in UTC — for example `0 2 * * *` for 2am nightly. Required when drift detection is enabled.
+  </Property>
+  <Property name="Slack channel" type="string">
+    Where to post when drift is found. Optional; requires the Slack integration.
+  </Property>
+</Properties>
+
+A workspace that has never been checked runs as soon as you enable it. There is no organization-level schedule — drift detection is configured per workspace.
+
+You can also run one immediately with **Run now** on the drift detection page.
+
+## Drift standing
+
+A workspace's **drift standing** is derived from its most recent drift run rather than stored, so it can never disagree with the runs themselves:
+
+<Properties>
+  <Property name="disabled" type="standing">
+    Drift detection is off for this workspace.
+  </Property>
+  <Property name="never_run" type="standing">
+    Enabled, but no run has completed yet.
+  </Property>
+  <Property name="running" type="standing">
+    A run is in flight.
+  </Property>
+  <Property name="in_sync" type="standing">
+    The last run found nothing changed outside Terraform.
+  </Property>
+  <Property name="drifted" type="standing">
+    The last run found changes outside Terraform.
+  </Property>
+  <Property name="failed" type="standing">
+    The last run did not complete.
+  </Property>
+</Properties>
+
+## What it reports
+
+Each finding is one Terraform address and one action — `update`, `delete`, or `create` — read from the plan JSON's `resource_drift`. That is distinct from a plan's resource changes, which are what Terraform proposes to *do*; drift is what already happened without it.
+
+## Notifications
+
+A drift run posts to its Slack channel **only when it finds drift**. An `in_sync` run says nothing, so a quiet channel means a quiet estate. The message is one-shot — unlike a plan notification there are no reactions, because a drift run has no further states to move through.
+
+## Reconciling drift
+
+TerraDesk will not apply a drift run, and this is deliberate.
+
+Terraform *can* apply a refresh-only plan — it writes the observed values into state without touching infrastructure — but that is a state mutation behind a screen that reads as a report, so it is refused.
+
+Instead, tick the resources on the drift run and start a **targeted plan** from them. What you get is an ordinary plan that clears the full [apply gate](/guides/approvals): baseline approvals, resource policies, and reservations. The drift run itself is untouched and stays an honest record of what it found.
+
+<Warning>
+There is no auto-remediation, on purpose. Reverting drift assumes the code is right — and the moment that assumption matters most, when someone changed production by hand during an incident, is exactly when it is least safe. A human decides, through the same gate as any other apply.
+</Warning>

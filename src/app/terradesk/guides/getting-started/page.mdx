@@ -1,0 +1,79 @@
+export const metadata = {
+  title: 'Getting Started',
+  description:
+    'Connect a GitHub repository, create your first TerraDesk workspace, and run a plan through to apply.',
+}
+
+# Getting Started
+
+TerraDesk turns a directory of Terraform in a GitHub repository into a **workspace**: a unit of state with its own container configuration and its own approval requirements. This guide takes you from an empty install to an applied plan. {{ className: 'lead' }}
+
+## Prerequisites
+
+TerraDesk runs every plan and apply as a Kubernetes Job in the cluster your Devhub install lives in, so before you start you need:
+
+- **A Devhub install** with TerraDesk enabled. See the [Helm chart](https://github.com/devhub-tools/helm-charts) for deployment.
+- **The GitHub integration connected**, under **Settings → Integrations**. TerraDesk reads your infrastructure repositories through it and receives the webhooks that start pipeline plans.
+- **Cloud credentials** the Terraform in that repository can use. On Google Cloud this can be [workload identity](/guides/workspaces#workload-identity), which avoids storing a key at all; elsewhere it is a [workspace secret](/guides/workspaces#secrets).
+
+<Note>
+The Kubernetes permissions TerraDesk needs are granted by the chart. It creates and deletes Jobs, reads Pods and Pod logs, and creates the Secret each run is given — all within its own namespace.
+</Note>
+
+## Create a workspace
+
+Go to **TerraDesk → New workspace** and fill in:
+
+<Properties>
+  <Property name="Name" type="string">
+    What the workspace is called in the UI and in Slack messages.
+  </Property>
+  <Property name="Repository" type="string">
+    The GitHub repository holding the Terraform, in `owner/name` form. It must be visible to the GitHub integration.
+  </Property>
+  <Property name="Path" type="string">
+    The directory within that repository where `terraform init` runs. Leave it blank for the repository root.
+  </Property>
+  <Property name="Docker image" type="string">
+    The image the `init`, `plan`, and `apply` containers run, for example `hashicorp/terraform:1.10`. Point it at an OpenTofu image to run Tofu instead.
+  </Property>
+</Properties>
+
+Everything else has a working default. [Workspaces](/guides/workspaces) covers the rest of the configuration — trigger paths, init containers, environment variables, secrets, and workload identity.
+
+## Run your first plan
+
+Open the workspace and choose **Plan**. TerraDesk schedules a Job that:
+
+1. Clones the repository at the branch you picked, shallow, into a shared volume.
+2. Runs any [init containers](/guides/workspaces#init-containers) you configured.
+3. Runs `terraform init`.
+4. Runs `terraform plan -out plan.out`, streaming the output to the plan page as it goes.
+5. Runs `terraform show -json` against the saved plan, so TerraDesk knows exactly which resources change.
+
+When it finishes the plan reaches `planned` and is waiting on a human.
+
+<Note>
+The colored diff you read on the plan page comes from Terraform's own output. What the approval gate uses is the machine-readable `show -json` view, so a wording change in a Terraform release can never reclassify a destroy as something else.
+</Note>
+
+## Approve and apply
+
+If the workspace requires approvals, the plan sits at `planned` until it has them. Anyone with the `approve` permission on the workspace can approve from the plan page; [Approvals](/guides/approvals) covers how the requirement is calculated, including resource policies and reservations.
+
+Once the gate passes, **Apply** starts a second Job that reuses the exact `plan.out` the plan produced — so what applies is what you read, not a fresh plan. When the apply finishes, TerraDesk runs `terraform state list` and refreshes the workspace's resource inventory.
+
+## Plan automatically from GitHub
+
+Turn on **Run plans automatically** and TerraDesk will start a plan when a push or pull request changes a file under the workspace's path. See [Plans and Applies](/guides/plans-and-applies#triggers) for how paths are matched and when a plan supersedes another.
+
+<Warning>
+Running plans automatically means anyone who can push to the repository can queue a plan against this workspace, and — if the approval requirement is zero — have it apply. Consider who has write access before turning it on.
+</Warning>
+
+## Where to go next
+
+- [Workspaces](/guides/workspaces) — the full configuration surface.
+- [Approvals](/guides/approvals) — baseline approvals, reservations, and resource policies.
+- [Drift Detection](/guides/drift-detection) — find out what changed outside Terraform.
+- [Security](/guides/security) — how runs are isolated and what never leaves your cluster.

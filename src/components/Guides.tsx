@@ -1,48 +1,20 @@
+'use client'
+
 import { Button } from '@/components/Button'
 import { Heading } from '@/components/Heading'
-
-const guides = [
-  {
-    href: '/guides/authentication',
-    name: 'Authentication',
-    description: 'Learn how to authenticate your API requests.',
-  },
-  {
-    href: '/guides/terraform',
-    name: 'Terraform',
-    description: 'Learn how to manage your QueryDesk resources with Terraform.',
-  },
-  {
-    href: '/guides/github-actions',
-    name: 'GitHub Actions',
-    description:
-      'Learn how to manage your QueryDesk resources with GitHub Actions.',
-  },
-  {
-    href: '/guides/workflows',
-    name: 'Workflows',
-    description:
-      'Learn how to automate your processes with QueryDesk workflows.',
-  },
-  {
-    href: '/guides/data-protection',
-    name: 'Data Protection',
-    description:
-      'Learn how QueryDesk implements data protection to simplify meeting compliance requirements.',
-  },
-]
+import { useSite } from '@/components/SiteProvider'
 
 export function Guides() {
+  let site = useSite()
+
   return (
     <div className="my-16 xl:max-w-none">
       <Heading level={2} id="guides">
         Guides
       </Heading>
-      <p className="lead">
-        There are many ways to manage your QueryDesk resources including Terraform, GitHub Actions, and APIs. This documentation will help you get started.
-      </p>
+      <p className="lead">{site.guides.intro}</p>
       <div className="not-prose mt-4 grid grid-cols-1 gap-8 border-t border-zinc-900/5 pt-10 sm:grid-cols-2 xl:grid-cols-4 dark:border-white/5">
-        {guides.map((guide) => (
+        {site.guides.cards.map((guide) => (
           <div key={guide.href}>
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
               {guide.name}

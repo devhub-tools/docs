@@ -22,7 +22,13 @@ let highlighter
 function rehypeShiki() {
   return async (tree) => {
     highlighter =
-      highlighter ?? (await shiki.getHighlighter({ theme: 'css-variables' }))
+      highlighter ??
+      (await shiki.getHighlighter({
+        theme: 'css-variables',
+        // shiki only registers a default subset; anything a page uses has to be
+        // named here or highlighting throws at build time.
+        langs: ['shellscript', 'hcl', 'json', 'sql', 'yaml'],
+      }))
 
     visit(tree, 'element', (node) => {
       if (node.tagName === 'pre' && node.children[0]?.tagName === 'code') {

@@ -30,9 +30,9 @@ type ButtonProps = {
   variant?: keyof typeof variantStyles
   arrow?: 'left' | 'right'
 } & (
-    | React.ComponentPropsWithoutRef<typeof Link>
-    | (React.ComponentPropsWithoutRef<'button'> & { href?: undefined })
-  )
+  | React.ComponentPropsWithoutRef<typeof Link>
+  | (React.ComponentPropsWithoutRef<'button'> & { href?: undefined })
+)
 
 export function Button({
   variant = 'primary',

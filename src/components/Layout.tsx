@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 
 import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { Logo } from '@/components/Logo'
 import { Navigation } from '@/components/Navigation'
+import { usePagePath } from '@/components/SiteProvider'
 import { type Section, SectionProvider } from '@/components/SectionProvider'
 
 export function Layout({
@@ -17,7 +17,7 @@ export function Layout({
   children: React.ReactNode
   allSections: Record<string, Array<Section>>
 }) {
-  let pathname = usePathname()
+  let pathname = usePagePath()
 
   return (
     <SectionProvider sections={allSections[pathname] ?? []}>

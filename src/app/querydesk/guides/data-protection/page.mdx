@@ -12,9 +12,11 @@ QueryDesk implements a robust data protection system designed to ensure sensitiv
 
 The data protection system operates at the query processing layer, where all queries are validated and potentially modified before execution. This ensures that employees cannot access sensitive data they shouldn't have permission to view, preventing PII leaks and maintaining data privacy.
 
+Because the rewriting happens before the query runs, the database is never asked for the protected values in the first place. That is a stronger guarantee than masking a result set: tools that fetch the rows and then hide fields have already pulled the sensitive values across the network and through the application, where they can end up in memory, logs, and caches. Here they never leave the database at all.
+
 ### Core Security Principles
 
-1. **Data Never Leaves the Database**: All sensitive data remains within your database infrastructure
+1. **Data Never Leaves the Database**: Protected values are never returned by the database, rather than being fetched and hidden afterwards
 2. **Query Rewriting**: Queries are dynamically modified to enforce protection policies
 3. **Allow-List Validation**: Only pre-approved SQL syntax and operations are permitted
 4. **Fail Closed**: Anything the rewriter cannot fully model is rejected rather than passed through

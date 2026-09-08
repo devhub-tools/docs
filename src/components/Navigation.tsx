@@ -2,23 +2,16 @@
 
 import { useRef } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import clsx from 'clsx'
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion'
 
 import { Button } from '@/components/Button'
 import { useIsInsideMobileNavigation } from '@/components/MobileNavigation'
 import { useSectionStore } from '@/components/SectionProvider'
+import { usePagePath, useSite } from '@/components/SiteProvider'
 import { Tag } from '@/components/Tag'
 import { remToPx } from '@/lib/remToPx'
-
-interface NavGroup {
-  title: string
-  links: Array<{
-    title: string
-    href: string
-  }>
-}
+import { type NavGroup } from '@/lib/sites'
 
 function useInitialValue<T>(value: T, condition = true) {
   let initialValue = useRef(value).current
@@ -157,7 +150,7 @@ function NavigationGroup({
   // The state will still update when we re-open (re-render) the navigation.
   let isInsideMobileNavigation = useIsInsideMobileNavigation()
   let [pathname, sections] = useInitialValue(
-    [usePathname(), useSectionStore((s) => s.sections)],
+    [usePagePath(), useSectionStore((s) => s.sections)],
     isInsideMobileNavigation,
   )
 
@@ -229,43 +222,16 @@ function NavigationGroup({
   )
 }
 
-export const navigation: Array<NavGroup> = [
-  {
-    title: 'Guides',
-    links: [
-      { title: 'Introduction', href: '/' },
-      { title: 'Getting Started', href: '/guides/getting-started' },
-      { title: 'Authentication', href: '/guides/authentication' },
-      { title: 'Terraform', href: '/guides/terraform' },
-      { title: 'GitHub Actions', href: '/guides/github-actions' },
-      { title: 'Workflows', href: '/guides/workflows' },
-      { title: 'Data Protection', href: '/guides/data-protection' },
-    ],
-  },
-  {
-    title: 'AI',
-    links: [
-      { title: 'MCP Server', href: '/ai/mcp-server' },
-      { title: 'MCP Tools', href: '/ai/mcp-tools' },
-      { title: 'AI Governance', href: '/ai/governance' },
-    ],
-  },
-  {
-    title: 'Resources',
-    links: [
-      { title: 'Dashboards', href: '/resources/dashboards' },
-      { title: 'Databases', href: '/resources/databases' },
-      { title: 'Workflows', href: '/resources/workflows' },
-    ],
-  },
-]
-
 export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {
+  let site = useSite()
+
   return (
     <nav {...props}>
       <ul role="list">
-        <TopLevelNavItem href="mailto:support@devhub.tools">Support</TopLevelNavItem>
-        {navigation.map((group, groupIndex) => (
+        <TopLevelNavItem href="mailto:support@devhub.tools">
+          Support
+        </TopLevelNavItem>
+        {site.navigation.map((group, groupIndex) => (
           <NavigationGroup
             key={group.title}
             group={group}
@@ -273,7 +239,12 @@ export function Navigation(props: React.ComponentPropsWithoutRef<'nav'>) {
           />
         ))}
         <li className="sticky bottom-0 z-10 mt-6 min-[416px]:hidden">
-          <Button href="https://auth.devhub.cloud/login" target="_blank" variant="filled" className="w-full">
+          <Button
+            href="https://auth.devhub.cloud/login"
+            target="_blank"
+            variant="filled"
+            className="w-full"
+          >
             Sign in
           </Button>
         </li>

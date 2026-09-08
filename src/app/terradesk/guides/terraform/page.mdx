@@ -1,0 +1,45 @@
+export const metadata = {
+  title: 'Terraform',
+  description:
+    'In this guide, we will look at how to use Terraform to manage your TerraDesk resources',
+}
+
+# Terraform
+
+TerraDesk workspaces can be managed with Terraform, which is often the most natural way to run it: the repository that defines your infrastructure also defines the workspaces that plan it. You can find the Terraform provider here: [https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs). {{ className: 'lead' }}
+
+```hcl
+terraform {
+  required_providers {
+    devhub = {
+      source = "devhub-tools/devhub"
+    }
+  }
+}
+
+provider "devhub" {
+  # endpoint = "https://xxx.devhub.cloud"
+  # api_key  = "dh_xxx"
+}
+
+resource "devhub_terradesk_workspace" "prod" {
+  name         = "prod"
+  repository   = "acme/infrastructure"
+  path         = "environments/prod"
+  docker_image = "hashicorp/terraform:1.10"
+
+  required_approvals      = 2
+  run_plans_automatically = true
+
+  slack_channel   = "#terraform"
+  slack_notify_on = "default_branch"
+
+  drift_detection_enabled = true
+  drift_cron_expression   = "0 2 * * *"
+  drift_slack_channel     = "#infra-alerts"
+}
+```
+
+See the [`devhub_terradesk_workspace`](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/terradesk_workspace) resource for every available attribute, including init containers, secrets, trigger paths, and workload identity.
+
+If you need to manage resources that are not supported by Terraform yet, please reach out to support@devhub.tools.

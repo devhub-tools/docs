@@ -1,0 +1,40 @@
+export const metadata = {
+  title: 'Authentication',
+  description:
+    'Learn how to authenticate with the API using API keys. API keys are required to access all endpoints and can be managed through settings in your installation.',
+}
+
+# Authentication
+
+You'll need to authenticate your requests to access any of the endpoints in the API. TerraDesk uses API keys for authentication, which provide secure access to your organization's resources. {{ className: 'lead' }}
+
+## API Keys
+
+Each API key is associated with a specific organization and can be used to manage settings through Terraform and official GitHub Actions.
+
+### Getting an API Key
+
+1. **Navigate to Settings**: Go to your organization's settings in the app
+2. **API Keys Section**: Click on the "API Keys" tab in the settings
+3. **Create New Key**: Click the "New API key" button
+4. **Name Your Key**: Provide a descriptive name for your API key
+5. **Copy the Token**: Once created, copy the generated API key token immediately - you won't be able to retrieve it again
+
+Remember that an API key with full access can manage every resource in your organization, so treat it with the same security as your account password.
+
+### Using Your API Key
+
+Include your API key in the `x-api-key` header with all API requests:
+
+```bash {{ title: 'Example request with API key' }}
+curl https://xxx.devhub.cloud/api/v1/terradesk/workspaces/tfws_xxx \
+  -H "x-api-key: dh_xxx"
+```
+
+### API Key Format
+
+Devhub API keys are prefixed with `dh_` followed by your token.
+
+### Scopes and expiry
+
+An API key carries a set of permissions and an optional expiry. TerraDesk's workspace endpoints require **full access**; the narrower scopes exist for CI use cases that only need to trigger a workflow or report coverage. Keys are stored hashed, never in plaintext, and cannot be read back after creation.

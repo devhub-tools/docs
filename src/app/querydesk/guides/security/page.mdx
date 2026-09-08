@@ -1,0 +1,181 @@
+export const metadata = {
+  title: 'Security',
+  description:
+    'How QueryDesk is built: where it runs, how database credentials are kept out of reach, what is recorded about every query, and what does and does not leave your infrastructure.',
+}
+
+# Security
+
+QueryDesk sits between your engineers and your production data. It is built around one idea: **a person gets an answer, never the credential**, and everything they did is recorded. This page explains how. {{ className: 'lead' }}
+
+<Note>
+Devhub runs inside your own infrastructure, and operates none of its own that touches your data. That shapes everything below: these controls are enforced by the architecture, not promised by policy.
+</Note>
+
+## Deployment model
+
+Devhub is one container image plus a PostgreSQL database. You deploy it with a [Helm chart](https://github.com/devhub-tools/helm-charts) into a Kubernetes cluster **you run**.
+
+- Your database credentials, query history, and any stored result rows stay in your infrastructure.
+- The Devhub database is yours. The chart can create one with CloudNativePG, or use one you already operate.
+- Devhub has no network path into your install. There is no support tunnel, no channel that phones home with your data, and no vendor access to your database.
+
+A cloud-hosted option also exists. If the databases you want to reach sit inside a private network, an **agent** runs in that network and opens an **outbound** connection to Devhub. Nothing inbound is opened, and the connection to the database is made from inside your network.
+
+## Credentials are never handed out
+
+An administrator configures a **database credential** once: hostname, database user, and password. It is encrypted at rest with AES-256-GCM under a key only your install holds. From then on:
+
+- The password is never shown again, never returned by the API, and never sent to a browser.
+- People are granted the right to *run queries through* a credential, not the credential itself.
+- Access can be restricted per database, so seeing a database in the list is not the same as being able to query it.
+- Revoking someone's access takes effect on their next query. There is nothing for them to keep.
+
+The TLS material for a connection is encrypted the same way: CA certificate, client certificate, and client key. A connection can be encrypted, CA-verified, or fully verified including the server hostname.
+
+### The proxy
+
+Tools that need a real Postgres connection go through the QueryDesk proxy. People authenticate to it as themselves using **SCRAM**, so the proxy stores a salt and verifier rather than anything replayable against your database, and a proxy password has its own expiry. The connection it opens on the other side uses the credential that person is entitled to. You supply the proxy's TLS certificates through the chart.
+
+Queries through the proxy get the same [data protection](/guides/data-protection) rewriting and the same review requirements as queries in the web UI.
+
+## Every query is reviewable and recorded
+
+### Read or write is derived, not declared
+
+Each query's SQL is parsed and classified as a **read** or a **write**. Nothing about that is taken on trust:
+
+- A read is exactly `SELECT`, `WITH … SELECT`, `SHOW`, and `EXPLAIN` without `ANALYZE`. Everything else is a write.
+- Anything that cannot be parsed, or parses to something we do not recognize, is a **write**. Unknown is never cheap.
+- A query holding several statements takes the strictest class, and the class is re-derived whenever the SQL changes. Editing a pending query reclassifies it.
+
+That catches the cases that look like reads and aren't. `EXPLAIN ANALYZE` executes the statement. A `SELECT` with a data-modifying CTE modifies data. `SELECT … INTO` creates a table. `CALL` and `EXEC` are always writes, because nothing in the call says what the procedure does.
+
+### Review
+
+A credential can require a number of **peer reviews** before a query using it runs. A peer review counts only while all of this holds, and each part is rechecked when the query runs:
+
+- The approver is not the query's author.
+- They still belong to the organization.
+- They still hold `approve` on that database.
+- They approved **after** the query was last edited.
+
+So revoking a role or editing the SQL voids approvals retroactively. An approved query cannot be quietly swapped for a different one.
+
+**Review bypass** is off by default on every database. Where an administrator turns it on, a super admin can run their own unreviewed query only by explicitly acknowledging the override. That produces a flagged record attributed to them. It carries the query past the requirement, it never counts as review, and the audit log shows it for what it was.
+
+### The audit log
+
+Every query records its SQL, when it ran, the **person** who ran it, and the **credential** it ran through. Those last two are kept separate on purpose. The person is who is accountable; the database user is what your database's own logs will show. That is the join you need when a database log points at a shared login rather than a name.
+
+Queries written by AI are labelled with their source, whether that was a person, the in-app chat, or an external MCP client. An AI-authored statement is never indistinguishable from a hand-written one.
+
+## Sensitive data never leaves your database
+
+[Data protection policies](/guides/data-protection) rewrite a query **before it runs**, replacing protected columns with a mask everywhere in the statement, `WHERE` clauses included. The database is asked for `'***'` in place of the column, so it never returns the real value.
+
+That is a stronger guarantee than masking a result set. Most tools fetch the rows first and hide fields on the way to the screen, which means the sensitive values have already crossed the network, passed through the application, and landed in memory, logs, and caches along the way. Here they never leave the database at all, so there is nothing in transit or at rest to protect.
+
+```sql
+-- What the user wrote
+SELECT id, name, email FROM users;
+
+-- What the database actually receives
+SELECT id, '***' AS name, '***' AS email FROM users;
+```
+
+The rest of the design:
+
+- **Default deny.** With a policy assigned, every column is hidden unless it is explicitly allowed.
+- **Fail closed.** A statement the rewriter cannot fully model is rejected, not forwarded. That means `PREPARE`/`EXECUTE`, cursors, `COPY`, `DO`, and `CALL` are refused while a policy is in effect.
+- **System catalogs are blocked by default.** `pg_stats` publishes sampled values from every table, so catalogs are only reachable through an allowlist you set per policy.
+- **It applies everywhere.** The web UI, the Postgres proxy, and the [MCP `run_query` tool](/ai/mcp-tools) all run the same rewriting.
+
+## Results at rest
+
+Storing result rows is **off by default** on every database. Where you turn it on:
+
+- Rows are stored compressed and **after redaction**, so a stored result can never show more than the person who ran it saw.
+- A retention period clears the rows once they age out.
+- A **download link** is bound to the one person whose query it is, and serves the redacted rows. It can only ever yield what that person already saw.
+- A **shared query** is readable only by people signed in to your organization. It can be restricted to named users or roles, and can carry an expiry. There is no unauthenticated route to one.
+- Turning retention off stops new results being kept.
+
+## Authentication
+
+<Properties>
+  <Property name="OIDC single sign-on" type="">
+    Set up with a discovery document URI, client id, and client secret. An optional groups claim maps your identity provider's groups onto Devhub roles, so access follows your directory.
+  </Property>
+  <Property name="Authenticating proxy" type="">
+    If you already front the app with an identity-aware proxy, Devhub can trust a header carrying the signed-in email, and a second one carrying groups. Once this is set, it is the **only** way anyone can sign in.
+  </Property>
+  <Property name="WebAuthn passkeys" type="">
+    A hardware-backed second factor. An organization can require it, and a user without a passkey enrolls one before they can reach anything.
+  </Property>
+  <Property name="Sessions" type="">
+    Signed cookies, `SameSite=Lax`, 30-day maximum age. Sessions can also be revoked server side: signing out invalidates every session for that user, so a cookie copied beforehand stops working immediately.
+  </Property>
+</Properties>
+
+### API keys
+
+API keys are prefixed `dh_` and **stored hashed**, never as the token itself. A key cannot be read back after you create it, so a lost key is replaced rather than recovered.
+
+Every key has a permission set and an optional expiry, and the permission is checked against the route on each request. A CI job that only provisions a preview-environment database can hold a key that can do nothing else.
+
+## Authorization
+
+- **The organization is the boundary.** Every record is scoped by `organization_id`, and so is every query.
+- **Permissions are layered.** A check resolves as `super_admin` bypass → organization-wide role bypass → a per-object grant.
+- **Grants are per resource.** A permission ties an action, such as `approve` on one database, to a user or a role.
+- **Membership is archived, not deleted**, so old queries and approvals still resolve to a person.
+
+## AI access is opt-in
+
+AI access to a database is **off by default**, and enabled per database and per credential. Where it is on, a row cap applies, the AI runs as an organization user and inherits that user's data protection policy, and everything it writes is labelled as AI-authored in the audit log. See [AI Governance](/ai/governance).
+
+## Encryption
+
+### At rest
+
+Sensitive columns are encrypted with **AES-256-GCM** before they reach the database, using a key only your install holds. That covers database passwords and the TLS certificates and keys used to reach your databases. Encryption is versioned, so you can rotate keys without a flag day.
+
+This is separate from whole-database encryption, which is a property of the database you run. It means a backup, a replica, or a support dump carries no readable credentials.
+
+Stored result rows are compressed rather than column-encrypted, and only exist where you have turned retention on.
+
+### In transit
+
+- The connection to Devhub's own PostgreSQL supports `require`, `verify-ca`, and full `verify`, with your CA certificate and an optional client certificate.
+- Connections to the databases you query support the same, configured per database.
+- TLS at the edge is terminated by your ingress. The chart includes an optional Traefik `IngressRoute`.
+- Configuration secrets are read from files under `/etc/secrets` rather than environment variables, so they never show up in a pod description or a dump of the environment.
+
+## Application hardening
+
+- **Content Security Policy** on every browser response, with a per-request nonce: `default-src 'self'`, `connect-src 'self'`, `script-src 'self' 'nonce-…'`. No third-party script origin at all: no analytics, tag manager, or session recorder.
+- **CSRF protection** on all browser routes, plus the standard secure browser headers.
+- **The application container** runs as non-root, with `allowPrivilegeEscalation: false`, all capabilities dropped, and the `RuntimeDefault` seccomp profile.
+- **An optional NetworkPolicy** ships with the chart and restricts ingress and egress to what the app needs.
+- **The Kubernetes role is small and namespace-scoped.** Nothing cluster-wide, and no access to other workloads.
+
+## What leaves your install
+
+<Properties>
+  <Property name="Licensing" type="outbound">
+    The install registers with Devhub's licensing service and refreshes its license. Requests are signed with the installation's own Ed25519 key, and the license that comes back is verified locally. What travels is licensing data: the organization's identity and the email addresses holding seats. No customer content.
+  </Property>
+  <Property name="Error reporting" type="outbound">
+    Production builds report application exceptions to Sentry: stack traces and the surrounding application context. Enough to diagnose a crash, not a copy of your data.
+  </Property>
+  <Property name="Tracing" type="off by default">
+    OpenTelemetry export is off unless you set `ENABLE_TELEMETRY=true`, and then it goes to a collector you choose.
+  </Property>
+</Properties>
+
+Your database credentials, the data you query, your query history, and any stored results are not sent anywhere.
+
+## Anything else
+
+If something you need is not covered here, such as a control mapping, a security questionnaire, or a walkthrough with our engineering team, write to support@devhub.tools and we will work through it with you.

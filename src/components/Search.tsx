@@ -21,7 +21,7 @@ import {
 import { Dialog, DialogPanel, DialogBackdrop } from '@headlessui/react'
 import clsx from 'clsx'
 
-import { navigation } from '@/components/Navigation'
+import { useSite } from '@/components/SiteProvider'
 import { type Result } from '@/mdx/search.mjs'
 
 type EmptyObject = Record<string, never>
@@ -34,6 +34,7 @@ type Autocomplete = AutocompleteApi<
 >
 
 function useAutocomplete({ close }: { close: () => void }) {
+  let site = useSite()
   let id = useId()
   let router = useRouter()
   let [autocompleteState, setAutocompleteState] = useState<
@@ -80,7 +81,16 @@ function useAutocomplete({ close }: { close: () => void }) {
             {
               sourceId: 'documentation',
               getItems() {
-                return search(query, { limit: 5 })
+                // The index spans every product's docs, so take a wider slice
+                // and keep only the pages this domain serves.
+                let prefix = `/${site.id}`
+                return search(query, { limit: 30 })
+                  .filter((result) => result.url.startsWith(`${prefix}/`))
+                  .map((result) => ({
+                    ...result,
+                    url: result.url.slice(prefix.length),
+                  }))
+                  .slice(0, 5)
               },
               getItemUrl({ item }) {
                 return item.url
@@ -174,8 +184,9 @@ function SearchResult({
   query: string
 }) {
   let id = useId()
+  let site = useSite()
 
-  let sectionTitle = navigation.find((section) =>
+  let sectionTitle = site.navigation.find((section) =>
     section.links.find((link) => link.href === result.url.split('#')[0]),
   )?.title
   let hierarchy = [sectionTitle, result.pageTitle].filter(

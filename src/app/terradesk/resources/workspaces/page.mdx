@@ -1,0 +1,273 @@
+export const metadata = {
+  title: 'Workspaces',
+  description:
+    "On this page, we'll dive into the workspace endpoints you can use to manage TerraDesk workspaces programmatically.",
+}
+
+# Workspaces
+
+Workspaces are the core of TerraDesk — each one is a unit of Terraform state, bound to a path in a GitHub repository, with its own container configuration and approval requirements. On this page we'll look at how to retrieve, create, update, and delete workspaces through the API. {{ className: 'lead' }}
+
+<Note>
+Workspaces can also be managed with Terraform using the official provider: [devhub_terradesk_workspace](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/terradesk_workspace). That is usually the better fit — the repository that defines your infrastructure also defines the workspaces that plan it.
+</Note>
+
+All of these endpoints require an API key with **full access**. See [Authentication](/guides/authentication).
+
+## The workspace model
+
+### Properties
+
+<Properties>
+  <Property name="id" type="string">
+    Unique identifier for the workspace, prefixed `tfws_`.
+  </Property>
+  <Property name="name" type="string">
+    The display name for the workspace.
+  </Property>
+  <Property name="repository" type="string">
+    The GitHub repository holding the Terraform, in `owner/name` form. Must be visible to the GitHub integration.
+  </Property>
+  <Property name="path" type="string">
+    The directory within the repository that Terraform runs in. Defaults to the repository root.
+  </Property>
+  <Property name="trigger_paths" type="array">
+    Additional repository paths that also start a plan when a push or pull request changes a file under them. Each entry is an object with a `path`. Additive and prefix-matched — they never stop `path` itself from triggering, and only decide whether to plan, never where Terraform runs.
+  </Property>
+  <Property name="docker_image" type="string">
+    The image the `init`, `plan`, and `apply` containers run, for example `hashicorp/terraform:1.10`.
+  </Property>
+  <Property name="command" type="string">
+    Replaces the image's entrypoint on the `init`, `plan`, and `apply` containers, for example `op run -- terraform`. The Terraform arguments are appended unchanged. Blank uses the image's own entrypoint.
+  </Property>
+  <Property name="init_args" type="string">
+    Extra arguments passed to `terraform init`. `-input=false` is always added.
+  </Property>
+  <Property name="init_containers" type="array">
+    Containers that run after checkout and before `terraform init`, in order. Each has a `name`, an `image`, and an optional `command`.
+  </Property>
+  <Property name="run_plans_automatically" type="boolean">
+    Whether pushes and pull requests queue plans for apply automatically. Defaults to `false`.
+  </Property>
+  <Property name="required_approvals" type="integer">
+    The baseline number of approvals every apply on this workspace must have. Defaults to `0`.
+  </Property>
+  <Property name="cpu_requests" type="string">
+    CPU requested for the run's pod, in Kubernetes units. Defaults to `100m`.
+  </Property>
+  <Property name="memory_requests" type="string">
+    Memory requested for the run's pod, in Kubernetes units. Defaults to `512M`.
+  </Property>
+  <Property name="env_vars" type="array">
+    Plaintext environment variables exposed to every container. Each has a `name` and a `value`.
+  </Property>
+  <Property name="secrets" type="array">
+    Encrypted values delivered to the run. Each has a `name` and a `raw` flag; `raw` exposes it under its literal name instead of `TF_VAR_<name>`. **Values are never returned** — only `id`, `name`, and `raw`.
+  </Property>
+  <Property name="workload_identity" type="object">
+    Google workload identity configuration: `enabled`, `service_account_email`, and `provider`.
+  </Property>
+  <Property name="agent_id" type="string">
+    The agent that runs this workspace's jobs, for infrastructure in a cluster Devhub cannot reach directly.
+  </Property>
+  <Property name="slack_channel" type="string">
+    Where a plan posts when it reaches `planned` and is waiting on a human.
+  </Property>
+  <Property name="slack_notify_on" type="string">
+    Which plans post to `slack_channel`: `all_plans` or `default_branch`. Defaults to `all_plans`.
+  </Property>
+  <Property name="drift_detection_enabled" type="boolean">
+    Whether a scheduled refresh-only drift run happens for this workspace. Defaults to `false`.
+  </Property>
+  <Property name="drift_cron_expression" type="string">
+    When drift detection runs, in UTC. Required when `drift_detection_enabled` is true.
+  </Property>
+  <Property name="drift_slack_channel" type="string">
+    Where a drift run posts, and only when it finds drift.
+  </Property>
+  <Property name="inserted_at" type="timestamp">
+    Timestamp of when the workspace was created.
+  </Property>
+  <Property name="updated_at" type="timestamp">
+    Timestamp of when the workspace was last updated.
+  </Property>
+</Properties>
+
+---
+
+## Create a workspace {{ tag: 'POST', label: '/api/v1/terradesk/workspaces' }}
+
+<Row>
+  <Col>
+
+    Creates a workspace. The repository must already be visible to the GitHub integration; if it isn't, the request fails with a `repository not found` error.
+
+    ### Required attributes
+
+    <Properties>
+      <Property name="name" type="string">
+        The display name for the workspace.
+      </Property>
+      <Property name="repository" type="string">
+        The GitHub repository in `owner/name` form.
+      </Property>
+      <Property name="docker_image" type="string">
+        The image to run Terraform with.
+      </Property>
+    </Properties>
+
+    ### Optional attributes
+
+    Every other property in [the workspace model](#the-workspace-model) may be supplied.
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/api/v1/terradesk/workspaces">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://xxx.devhub.cloud/api/v1/terradesk/workspaces \
+      -H "x-api-key: dh_xxx" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "prod",
+        "repository": "acme/infrastructure",
+        "path": "environments/prod",
+        "docker_image": "hashicorp/terraform:1.10",
+        "required_approvals": 2
+      }'
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "id": "tfws_abc123def456",
+      "name": "prod",
+      "repository": "acme/infrastructure",
+      "path": "environments/prod",
+      "trigger_paths": [],
+      "docker_image": "hashicorp/terraform:1.10",
+      "command": null,
+      "init_args": null,
+      "init_containers": [],
+      "run_plans_automatically": false,
+      "required_approvals": 2,
+      "cpu_requests": "100m",
+      "memory_requests": "512M",
+      "env_vars": [],
+      "secrets": [],
+      "workload_identity": null,
+      "agent_id": null,
+      "slack_channel": null,
+      "slack_notify_on": "all_plans",
+      "drift_detection_enabled": false,
+      "drift_cron_expression": null,
+      "drift_slack_channel": null,
+      "inserted_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Retrieve a workspace {{ tag: 'GET', label: '/api/v1/terradesk/workspaces/:id' }}
+
+<Row>
+  <Col>
+
+    Retrieves a workspace by its ID. Archived workspaces are not returned.
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/api/v1/terradesk/workspaces/tfws_abc123def456">
+
+    ```bash {{ title: 'cURL' }}
+    curl https://xxx.devhub.cloud/api/v1/terradesk/workspaces/tfws_abc123def456 \
+      -H "x-api-key: dh_xxx"
+    ```
+
+    </CodeGroup>
+
+    ```json {{ title: 'Response' }}
+    {
+      "id": "tfws_abc123def456",
+      "name": "prod",
+      "repository": "acme/infrastructure",
+      "path": "environments/prod",
+      "trigger_paths": [{ "path": "modules" }],
+      "docker_image": "hashicorp/terraform:1.10",
+      "required_approvals": 2,
+      "secrets": [
+        { "id": "tfsec_xyz789", "name": "database_password", "raw": false }
+      ],
+      "inserted_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+    ```
+
+  </Col>
+</Row>
+
+---
+
+## Update a workspace {{ tag: 'PATCH', label: '/api/v1/terradesk/workspaces/:id' }}
+
+<Row>
+  <Col>
+
+    Updates a workspace. `repository` must be supplied on every update, even when it isn't changing.
+
+    <Warning>
+    `env_vars`, `secrets`, `init_containers`, and `trigger_paths` are replaced wholesale by what you send, not merged. Omitting one of these leaves it unchanged; sending an empty array clears it.
+    </Warning>
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="PATCH" label="/api/v1/terradesk/workspaces/tfws_abc123def456">
+
+    ```bash {{ title: 'cURL' }}
+    curl -X PATCH https://xxx.devhub.cloud/api/v1/terradesk/workspaces/tfws_abc123def456 \
+      -H "x-api-key: dh_xxx" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "repository": "acme/infrastructure",
+        "required_approvals": 3,
+        "drift_detection_enabled": true,
+        "drift_cron_expression": "0 2 * * *"
+      }'
+    ```
+
+    </CodeGroup>
+
+  </Col>
+</Row>
+
+---
+
+## Delete a workspace {{ tag: 'DELETE', label: '/api/v1/terradesk/workspaces/:id' }}
+
+<Row>
+  <Col>
+
+    Archives a workspace. It stops running and no longer appears in the workspace list, but its plans — and the record of who approved them — are kept.
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="DELETE" label="/api/v1/terradesk/workspaces/tfws_abc123def456">
+
+    ```bash {{ title: 'cURL' }}
+    curl -X DELETE https://xxx.devhub.cloud/api/v1/terradesk/workspaces/tfws_abc123def456 \
+      -H "x-api-key: dh_xxx"
+    ```
+
+    </CodeGroup>
+
+  </Col>
+</Row>

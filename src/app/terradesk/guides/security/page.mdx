@@ -1,0 +1,173 @@
+export const metadata = {
+  title: 'Security',
+  description:
+    'How TerraDesk is built: where it runs, what isolates a Terraform run, how credentials are stored, and what does and does not leave your infrastructure.',
+}
+
+# Security
+
+TerraDesk holds two of the most sensitive things you have: the credentials that can change your infrastructure, and the authority to say a change may go ahead. This page explains how both are protected. {{ className: 'lead' }}
+
+<Note>
+Devhub runs inside your own infrastructure, and operates none of its own that touches your data. That shapes everything below: these controls are enforced by the architecture, not promised by policy.
+</Note>
+
+## Deployment model
+
+Devhub is one container image plus a PostgreSQL database. You deploy it with a [Helm chart](https://github.com/devhub-tools/helm-charts) into a Kubernetes cluster **you run**.
+
+- Your Terraform code, state, plan output, logs, and cloud credentials never leave your infrastructure.
+- The database is yours. The chart can create one with CloudNativePG, or use one you already operate.
+- Devhub has no network path into your install. There is no support tunnel, no channel that phones home with your data, and no vendor access to your database.
+
+A cloud-hosted option also exists, where the app itself runs in Devhub's cluster. **TerraDesk requires an agent in that mode.** A workspace on a cloud-hosted install cannot run jobs in Devhub's cluster, so your Terraform still runs in your own infrastructure, against credentials that stay there.
+
+## How a Terraform run is isolated
+
+Every plan and every apply is a **one-shot Kubernetes Job**, created for that run and torn down afterwards. Nothing is reused between runs.
+
+### The pod
+
+```yaml
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+restartPolicy: Never
+automountServiceAccountToken: false
+backoffLimit: 0
+ttlSecondsAfterFinished: 3600
+```
+
+- **Never root.** The pod and every container in it run as uid/gid 1000.
+- **No Kubernetes credentials.** `automountServiceAccountToken: false` means the runner gets no service account token. Your Terraform, your providers, and anything a module pulls in have no path to the Kubernetes API.
+- **No retries.** `backoffLimit: 0`, so a failed apply is never quietly re-run.
+- **Nothing persisted.** The only volumes are two `emptyDir`s, `/workspace` and `/home/terradesk`, and they die with the pod. The Job is cleaned up an hour later.
+
+### Each container
+
+Every container in the run gets the same hardened context. That includes the ones TerraDesk builds (`git`, `init`, `plan`, `apply`, and the plan-transfer containers) and any [init container](/guides/workspaces#init-containers) you configure:
+
+```yaml
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+```
+
+Your init containers are not an exception. They also cannot take the container names TerraDesk reserves for itself.
+
+### Source
+
+The repository is cloned shallow, at the one branch the run is for. It uses a **short-lived GitHub App installation token** minted for that run. There is no long-lived deploy key and no SSH agent in the pod.
+
+### Credentials
+
+Workspace secrets are encrypted at rest (see [Encryption](#encryption)) and decrypted only while a run is being prepared. They go into a Kubernetes Secret in Devhub's namespace, written just before the Job starts, and reach the containers through `envFrom`. A secret value never appears in the Job manifest, in an image, or on disk in the workspace volume.
+
+On Google Cloud, [workload identity](/guides/workspaces#workload-identity) removes the credential altogether. TerraDesk mints a short-lived token for the run's service account and exchanges it for an access token on the service account you name, so no long-lived cloud key is stored anywhere in the install.
+
+### The plan file never leaves the cluster
+
+A plan and the apply that follows it are two separate Jobs, so `plan.out` has to move between them. It moves through Devhub, and the address the runner calls is worked out rather than configured:
+
+- A runner in Devhub's own namespace calls `http://devhub.<namespace>.svc.cluster.local`, an in-cluster address. The plan file never touches your public hostname, never crosses whatever terminates TLS at your edge, and is unaffected by an identity-aware proxy in front of the app.
+- A runner belonging to an **agent** calls the public endpoint it was configured with, because that is the only way it can reach Devhub at all.
+
+Both calls carry a token scoped to that one plan and valid for four hours. The endpoints accept nothing else.
+
+<Note>
+`plan.out` is the exact set of changes a privileged cloud identity is about to make. Sending it over a public path would be a poor default even where it is safe.
+</Note>
+
+### Runs in another cluster
+
+When the infrastructure lives somewhere Devhub cannot reach, give the workspace an **agent**. The agent runs in that cluster and opens an **outbound** WebSocket to Devhub, authenticated with a signed token. Nothing inbound to your cluster is opened, and the credentials its Terraform uses stay in it.
+
+## What decides that a change may apply
+
+The [apply gate](/guides/approvals) is where change control happens, and it is built to be audited:
+
+- **Approvals name a person.** Each one records the user who approved and the time they did it.
+- **The requirement can be rechecked.** Every plan stores the resource changes it proposed, so you can recompute what it needed rather than take it on trust.
+- **Policies only raise the bar.** A [resource policy](/guides/approvals#resource-policies) can demand more approvals, or specific approvers, for certain resources and actions. No setting lets a policy wave a change through below the workspace baseline.
+- **Nothing is deleted.** Plans and approvals are permanent. Workspaces are archived rather than removed, and releasing a reservation records who did it and when.
+- **Only one apply can start.** A plan moves into applying under a row lock, so it can never have two apply jobs running, and the plans it invalidates are canceled in the same transaction.
+- **A drift run can never apply.** [Drift detection](/guides/drift-detection) is refresh-only. Fixing drift goes through an ordinary plan and the full gate.
+
+## Authentication
+
+<Properties>
+  <Property name="OIDC single sign-on" type="">
+    Set up with a discovery document URI, client id, and client secret. An optional groups claim maps your identity provider's groups onto Devhub roles, so access follows your directory.
+  </Property>
+  <Property name="Authenticating proxy" type="">
+    If you already front the app with an identity-aware proxy, Devhub can trust a header carrying the signed-in email, and a second one carrying groups. Once this is set, it is the **only** way anyone can sign in.
+  </Property>
+  <Property name="WebAuthn passkeys" type="">
+    A hardware-backed second factor. An organization can require it, and a user without a passkey enrolls one before they can reach anything.
+  </Property>
+  <Property name="Sessions" type="">
+    Signed cookies, `SameSite=Lax`, 30-day maximum age. Sessions can also be revoked server side: signing out invalidates every session for that user, so a cookie copied beforehand stops working immediately.
+  </Property>
+</Properties>
+
+### API keys
+
+API keys are prefixed `dh_` and **stored hashed**, never as the token itself. A key cannot be read back after you create it, so a lost key is replaced rather than recovered.
+
+Every key has a permission set and an optional expiry, and the permission is checked against the route on each request. TerraDesk's workspace endpoints need `full_access`. Narrower scopes exist so a CI job that only triggers a workflow or reports coverage can hold a key that can do nothing else.
+
+## Authorization
+
+- **The organization is the boundary.** Every record is scoped by `organization_id`, and so is every query.
+- **Permissions are layered.** A check resolves as `super_admin` bypass → organization-wide role bypass → a per-object grant.
+- **Grants are per resource.** A permission ties an action, such as `approve` on one workspace, to a user or a role. Being able to see something never implies being able to act on it.
+- **Membership is archived, not deleted**, so old approvals still resolve to a person.
+
+## Encryption
+
+### At rest
+
+Sensitive columns are encrypted with **AES-256-GCM** before they reach the database, using a key only your install holds. In TerraDesk that covers workspace secrets, the plan log, and the saved plan output. Encryption is versioned, so you can rotate keys without a flag day.
+
+This is separate from whole-database encryption, which is a property of the database you run. It means a backup, a replica, or a support dump carries no readable secrets.
+
+### In transit
+
+- The connection to PostgreSQL supports `require`, `verify-ca`, and full `verify`, with your own CA certificate and an optional client certificate.
+- TLS at the edge is terminated by your ingress. The chart includes an optional Traefik `IngressRoute`.
+- Configuration secrets are read from files under `/etc/secrets` rather than environment variables, so they never show up in a pod description or a dump of the environment.
+
+## Application hardening
+
+- **Content Security Policy** on every browser response, with a per-request nonce: `default-src 'self'`, `connect-src 'self'`, `script-src 'self' 'nonce-…'`. No third-party script origin at all: no analytics, tag manager, or session recorder.
+- **CSRF protection** on all browser routes, plus the standard secure browser headers.
+- **The application container** runs as non-root, with `allowPrivilegeEscalation: false`, all capabilities dropped, and the `RuntimeDefault` seccomp profile.
+- **An optional NetworkPolicy** ships with the chart and restricts ingress and egress to what the app needs.
+- **The Kubernetes role is small and namespace-scoped**: create and delete Jobs, read Pods and Pod logs, and create Secrets and service account tokens. Nothing cluster-wide, and no access to other workloads.
+
+## What leaves your install
+
+<Properties>
+  <Property name="Licensing" type="outbound">
+    The install registers with Devhub's licensing service and refreshes its license. Requests are signed with the installation's own Ed25519 key, and the license that comes back is verified locally. What travels is licensing data: the organization's identity and the email addresses holding seats. No customer content.
+  </Property>
+  <Property name="Error reporting" type="outbound">
+    Production builds report application exceptions to Sentry: stack traces and the surrounding application context. Enough to diagnose a crash, not a copy of your data.
+  </Property>
+  <Property name="Tracing" type="off by default">
+    OpenTelemetry export is off unless you set `ENABLE_TELEMETRY=true`, and then it goes to a collector you choose.
+  </Property>
+</Properties>
+
+Your Terraform source, state, plan output, plan logs, workspace secrets, and cloud credentials are not sent anywhere. They live in your database, encrypted, and in the short-lived pods that run your Terraform.
+
+## Anything else
+
+If something you need is not covered here, such as a control mapping, a security questionnaire, or a walkthrough with our engineering team, write to support@devhub.tools and we will work through it with you.

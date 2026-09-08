@@ -1,0 +1,34 @@
+import { Guides } from '@/components/Guides'
+import { Resources } from '@/components/Resources'
+import { HeroPattern } from '@/components/HeroPattern'
+
+export const metadata = {
+  title: 'TerraDesk Documentation',
+  description:
+    'Find useful information on how to get the most out of TerraDesk.',
+}
+
+export const sections = [
+  { title: 'Guides', id: 'guides' },
+  { title: 'Resources', id: 'resources' },
+]
+
+<HeroPattern />
+
+# Documentation
+
+TerraDesk runs Terraform and OpenTofu for your infrastructure repositories inside your own cluster, with approval gates you control and a record of who approved what. {{ className: 'lead' }}
+
+<Note>
+You may notice references to Devhub, which is a collection of tools that includes TerraDesk.
+</Note>
+
+<div className="not-prose mb-16 mt-6 flex gap-3">
+  <Button href="/guides/getting-started" arrow="right">
+    <>Getting Started</>
+  </Button>
+</div>
+
+<Guides />
+
+<Resources />
