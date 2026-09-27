@@ -441,7 +441,9 @@ The database model contains all the information about your database connections,
 <Row>
   <Col>
 
-    This endpoint allows you to delete databases from your QueryDesk. Note: This will also delete all associated credentials and permissions.
+    This endpoint allows you to delete databases from your QueryDesk. Note: This will also delete all associated credentials, permissions, and data protection policies. Deletion is all or nothing: if it fails, the database is left unchanged.
+
+    A database whose data protection policies are inherited by another database can't be deleted. The request returns `422` with an error naming the inheriting databases; remove the inherited policies from those databases first.
 
   </Col>
   <Col sticky>
@@ -628,7 +630,9 @@ The database model contains all the information about your database connections,
 <Row>
   <Col>
 
-    This endpoint allows you to delete a database by providing its API ID instead of the internal ID.
+    This endpoint allows you to delete a database by providing its API ID instead of the internal ID. Like deleting by ID, it also removes the database's permissions and data protection policies, all or nothing.
+
+    A database whose data protection policies are inherited by another database can't be deleted. The request returns `422` with an error naming the inheriting databases; remove the inherited policies from those databases first.
 
   </Col>
   <Col sticky>

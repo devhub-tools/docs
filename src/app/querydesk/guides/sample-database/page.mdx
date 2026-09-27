@@ -1,0 +1,172 @@
+export const metadata = {
+  title: 'Create a sample database for your trial',
+  description:
+    'Create a free PostgreSQL database for Pinnacle Trust Financial Group, a fictional bank, and connect it to QueryDesk.',
+}
+
+# Create a sample database for your trial
+
+QueryDesk needs a connected database before it can do anything. If you don't want to connect a real database for your trial, or can't make one reachable from QueryDesk Cloud, this guide gives you one: download a script, run it on a free PostgreSQL host, and connect the result. It takes about 10 minutes. {{ className: 'lead' }}
+
+The database belongs to Pinnacle Trust Financial Group (PTFG), a fictional bank. It holds the kind of data a bank guards closely: Social Security numbers, card numbers, account and routing numbers, balances, and fraud alerts. Every name, account, and number in it is fabricated. The [Getting Started Guide](/guides/getting-started) uses it for its examples.
+
+---
+
+## Before you begin
+
+You will need:
+
+- **A PostgreSQL host.** This guide uses [Neon](https://neon.com), which offers a free plan at the time of writing. Neon is not required. Any PostgreSQL 13 or later database that accepts connections from `35.224.237.12` works. See [Use a different PostgreSQL host](#use-a-different-postgre-sql-host).
+- **A password manager,** or another safe place to store two generated passwords.
+
+---
+
+## Download the script
+
+<a href="/guides/sample-database/querydesk-sample-ptfg.sql" download>Download querydesk-sample-ptfg.sql</a>
+
+The script:
+
+- Creates 10 tables, 4 views, and the PTFG sample data.
+- Creates two database users, each with a randomly generated 64-character password:
+  - `querydesk_readonly` can read data.
+  - `querydesk_readwrite` can read, insert, update, and delete data.
+- Returns the database name, both usernames, and both passwords as its final result.
+
+Neither user can create, change, or drop tables. The passwords are generated when the script runs and never appear in the script itself.
+
+The script deletes nothing. Run it only on a new, empty database. If PTFG's tables or users already exist, it stops with an error.
+
+---
+
+## Create a Neon project
+
+1. Sign up at [neon.com](https://neon.com) and create a project.
+2. Set these options for the project:
+   - **Postgres version:** the latest.
+   - **Region:** AWS US East 2 (Ohio). It's the closest region to QueryDesk Cloud.
+   - **Database name:** anything. The default is fine. The script reads the name and returns it with the passwords.
+
+<Note>
+Neon's free plan includes 0.5 GB of storage and 100 CU-hours of compute per project per month. The sample data is about 36 KB. If a monthly limit is reached, Neon pauses the project's compute until the next month. Your data is not deleted. See [Neon's free plan limits](https://neon.com/faqs/free-plan-limits-and-quotas).
+</Note>
+
+---
+
+## Run the script
+
+1. In your Neon project, open **SQL Editor**. Confirm the database selector shows your new project's database.
+2. Open `querydesk-sample-ptfg.sql` in a text editor such as Notepad or TextEdit. Copy the entire contents and paste them into the SQL Editor.
+3. Click **Run**.
+4. Neon shows one result tab for each statement in the script, about 50 in all. Click the **last** tab. It shows two rows:
+
+| database_name | username | password |
+| --- | --- | --- |
+| Your database name | `querydesk_readonly` | A 64-character password |
+| Your database name | `querydesk_readwrite` | A 64-character password |
+
+5. Copy the database name, both usernames, and both passwords into your password manager.
+
+<Warning>
+The passwords appear only in this result. Save them before you leave the SQL Editor. If you lose them, create a new Neon project and run the script there.
+</Warning>
+
+---
+
+## Connect PTFG to QueryDesk
+
+### Copy the host from Neon
+
+1. On your Neon project's dashboard, click **Connect**.
+2. Turn **Connection pooling** off. QueryDesk connects to the database directly.
+3. Copy the host from the connection string: everything between `@` and the next `/`. It starts with `ep-` and ends with `neon.tech`, for example `ep-cool-darkness-123456.us-east-2.aws.neon.tech`.
+
+<Important>
+If the host contains `-pooler`, pooling was on when you copied it. Turn **Connection pooling** off and copy the host again.
+</Important>
+
+### Complete the Connect a database form
+
+The first time you sign in, QueryDesk opens the **Connect a database** form.
+
+1. Select **PostgreSQL** as the **Engine**.
+2. Complete the connection fields:
+
+| Field | Value |
+| --- | --- |
+| **Display name** | Any name that's useful to you, for example `PTFG Sample`. |
+| **Host** | The host you copied from Neon. |
+| **Database name** | The database name from the script's result. |
+| **Port** | `5432`. This is filled in for you. |
+| **Username** | `querydesk_readonly` |
+| **Password** | The password for `querydesk_readonly`. |
+
+3. Expand **Advanced** and turn on **Connect over SSL**. Neon accepts only encrypted connections. Leave the certificate fields empty and **Verify server hostname (verify-full)** off.
+4. Click **Test connection**. When **Connection successful** appears, click **Finish setup**.
+
+Keep `querydesk_readwrite` and its password. You'll add them as a second credential in the Getting Started Guide's [Create an approval flow](/guides/getting-started#create-an-approval-flow) section.
+
+Continue with [First look at QueryDesk](/guides/getting-started#first-look-at-query-desk).
+
+---
+
+## What's in PTFG
+
+All tables and views are in the `public` schema.
+
+| Table | Contents |
+| --- | --- |
+| `branches` | 10 branches across five regions |
+| `employees` | 12 employees, with SSNs, dates of birth, and salaries |
+| `customers` | 15 customers, with SSNs, dates of birth, and contact details |
+| `accounts` | 19 checking, savings, money market, and CD accounts |
+| `payment_cards` | 13 debit, credit, and prepaid cards, with card numbers and CVVs |
+| `bank_account_details` | 15 routing and account number pairs |
+| `transactions` | 23 transactions, one flagged as suspicious |
+| `loans` | 10 personal, auto, home, and student loans |
+| `fraud_alerts` | 8 alerts, 2 unresolved |
+| `audit_log` | 10 records of PTFG employees accessing sensitive fields |
+
+| View | Contents |
+| --- | --- |
+| `vw_customer_pii` | Each customer's SSN, date of birth, contact details, and branch |
+| `vw_account_summary` | Each account's number, type, status, balance, customer, and branch |
+| `vw_card_pii` | Each card's number, CVV, and expiry, with the cardholder's email and SSN |
+| `vw_open_fraud_alerts` | Unresolved fraud alerts with customer and account details |
+
+<Note>
+The `audit_log` table is part of PTFG's fictional data. QueryDesk's own record of every query you run is under **Audit log** in the left navigation.
+</Note>
+
+The tables and views that hold SSNs, card numbers, and account numbers are good targets when you try [data protection](/guides/data-protection).
+
+---
+
+## Use a different PostgreSQL host
+
+Any PostgreSQL host works if all of the following are true:
+
+- It runs PostgreSQL 13 or later.
+- It accepts connections from `35.224.237.12`.
+- The database is new and empty.
+- You run the script as a user that can create other users, such as the database owner or an admin user.
+
+Run the script in your host's SQL tool, or with `psql`:
+
+```bash
+psql "postgresql://<admin_user>@<host>:5432/<database_name>" -f querydesk-sample-ptfg.sql
+```
+
+`psql` prompts for the admin user's password and prints the credentials result last. Connect to QueryDesk as described in [Connect PTFG to QueryDesk](#connect-ptfg-to-query-desk), using your host's values. Turn on **Connect over SSL** only if your host requires encrypted connections.
+
+---
+
+## Troubleshooting
+
+**The script stops with `type "account_type_enum" already exists`.** The script has already run on this database. Create a new Neon project and run it there.
+
+**The script stops with `role "querydesk_readonly" already exists`.** Database users belong to the whole PostgreSQL server, not to a single database, and this server already has them. This happens when the script runs on a second database in the same Neon project. Create a new Neon project and run it there.
+
+**Test connection fails with an SSL or handshake error.** **Connect over SSL** is off. Expand **Advanced** and turn it on.
+
+**The first connection or query after a break takes several seconds.** Neon pauses idle compute after 5 minutes and starts it again on the next connection. Later queries run at normal speed.

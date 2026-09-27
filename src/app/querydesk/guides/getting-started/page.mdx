@@ -1,12 +1,12 @@
 export const metadata = {
   title: 'Getting Started',
   description:
-    'Sign up for QueryDesk, then walk through connecting a database, running and approving queries, and checking the audit log.',
+    'Sign up for QueryDesk, then walk through connecting a database, running a query, inviting a teammate, approving a query, and checking the audit log.',
 }
 
 # Getting Started
 
-This guide will get you up and running with QueryDesk. It covers your deployment options, then walks through the core features using the pre-configured **Devhub** database that ships with every new instance. {{ className: 'lead' }}
+This guide will get you up and running with QueryDesk. It covers your deployment options, then walks through connecting your first database, running a query, inviting a teammate, and sending a query through an approval flow. {{ className: 'lead' }}
 
 You may notice references to Devhub throughout, which is the collection of tools that includes QueryDesk.
 
@@ -32,21 +32,55 @@ If you would like us to manage your installation in your own cloud, please reach
 
 ---
 
-## First look at QueryDesk
+## Before you begin
 
-After successfully completing sign-up, you will land on the **Databases** page. A database called **Devhub** is already connected and ready to use. While the Devhub database is the database for your instance of QueryDesk, you can use it to test queries and the major features outlined in this guide. No additional setup is required to start exploring.
+You will need the following to complete this guide:
 
-<Warning>
-Keeping access restricted to the Devhub database is essential, as unrestricted access could allow anyone to modify access and approval rules for the entire product.
-</Warning>
+- **A database QueryDesk can reach.** QueryDesk Cloud connects to your database from `35.224.237.12`, so your database's firewall, security group, or allowlist must accept connections from that address. If your database can't be reached from the internet, QueryDesk can connect through an agent running inside its network instead.
+- **Two database users:** a read-only user and a read/write user. QueryDesk uses these as credentials, and the pair is what makes approval flows possible. If you don't manage database users, get them from your IT, DevOps, Engineering, or Operations team before starting.
+- **A teammate's email address.** Approvals need a second person. If you're evaluating on your own, a second email address you control works too.
+
+<Tip>
+Don't want to connect a real database for your trial? [Create a sample database for your trial](/guides/sample-database) instead. The sample database belongs to Pinnacle Trust Financial Group (PTFG), a fictional bank. Every name, account, and number in it is fabricated. It runs on a free cloud PostgreSQL plan (free at the time of writing) and takes about 10 minutes to set up. It includes both database users this guide needs, and the examples in this guide use it.
+</Tip>
+
+---
+
+## Connect a database
+
+The first time you sign in, QueryDesk asks you to connect a database. Everything else in QueryDesk starts from a connected database, so this step comes first.
+
+1. Select the database **Engine**. The default port for that engine is filled in for you.
+2. Complete the connection fields:
+
+| Field | Description |
+| --- | --- |
+| **Display name** | Any name that's useful to you. This is how the database appears in QueryDesk. |
+| **Host** | The IP address or hostname only. For example: `10.1.0.132` or `mydb.cluster-abc123.us-east-1.rds.amazonaws.com`. |
+| **Database name** | The actual database name, not the display name. For MySQL, this is the schema name. |
+| **Port** | The default for the selected engine. Change it only if your database listens on a different port. |
+| **Username** | Your **read-only** database user. |
+| **Password** | The password for that user. |
 
 <Note>
-As the Devhub database is your QueryDesk instance, you want to avoid doing anything destructive. See previous warning.
+Use the read-only user here. You'll add the read/write user in [Create an approval flow](#create-an-approval-flow).
 </Note>
 
-![Databases page showing the Devhub entry with Connect button](/guides/getting-started/gsg-001.00.png)
+3. If your database requires encrypted connections, expand **Advanced** and turn on **Connect over SSL**. Paste the server CA certificate, client key, and client certificate if your database requires them (these may be optional depending on your database configuration). Work with your IT, DevOps, or Engineering team if you need help obtaining these.
+4. Leave **Verify server hostname (verify-full)** off unless you know the server certificate's hostname matches the **Host** field. Many managed database services use certificates that won't match.
+5. Click **Test connection**. When **Connection successful** appears, click **Finish setup**.
 
-The Devhub database is a live PostgreSQL instance. You can use it to run queries, test approval flows, and verify audit logging before connecting your own databases.
+<Important>
+If the connection test fails, check the network first. The most common causes are a firewall or allowlist that doesn't include `35.224.237.12`, an incorrect host or port, or an SSL setting that doesn't match what your database requires. If the database isn't reachable from the internet, click **connect through an agent** on the setup page.
+</Important>
+
+---
+
+## First look at QueryDesk
+
+After setup, a welcome window asks two optional questions about your role and what brings you to QueryDesk. Answer them and click **Get started**, or click **Skip**. Either way, you land on the **Databases** page with your database listed.
+
+The **Get started with QueryDesk** checklist in the lower right of the page tracks the next four sections of this guide. Each item is checked off as you complete it.
 
 The left navigation gives you access to everything in QueryDesk:
 
@@ -64,35 +98,27 @@ The left navigation gives you access to everything in QueryDesk:
 
 ---
 
-## Connect to the Devhub database
+## Run your first query
 
-On the Databases page, click **Connect** on the Devhub entry. This opens the query interface.
-
-![Query interface showing the left panel with table list, query pane, and results pane](/guides/getting-started/gsg-002.00.png)
+On the Databases page, click **Connect** on your database. This opens the query interface.
 
 The interface has three main areas:
 
-- **Left panel:** lists all tables in the connected database. Click any table name to load a `SELECT` query for that table automatically.
+- **Left panel:** lists the tables in the connected database. Click any table name to load a `SELECT` query for that table automatically.
 - **Query pane:** where you write or edit SQL.
 - **Results pane:** where query output appears after execution.
 
----
-
-## Run a query
-
-Type a query in the query pane, or click a table name in the left panel to generate one. Click **Run query** to execute it. For example, this will return every column from the `organizations` table, along with basic details about each one.
+Click a table name in the left panel, or type a query in the query pane, then click **Run query**. If you're using the [PTFG sample database](/guides/sample-database), this returns the first ten of the bank's fictional customers:
 
 ```sql
-SELECT
-  column_name,
-  data_type,
-  is_nullable,
-  column_default
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND table_name = 'organizations'
-ORDER BY ordinal_position;
+SELECT first_name, last_name, email, date_of_birth
+FROM customers
+LIMIT 10;
 ```
+
+<Note>
+For PostgreSQL databases that have a `public` schema alongside other schemas, the left panel currently lists only the tables in `public`, even when `public` is empty. Databases without a `public` schema list their tables normally. PostgreSQL creates a `public` schema in every new database by default, so this applies to most databases that use additional schemas. Support for listing every schema is in development. In the meantime, tables in other schemas can still be queried by name, for example `SELECT * FROM sales.orders;`.
+</Note>
 
 Results appear in the results pane below. From there, you can:
 
@@ -101,171 +127,179 @@ Results appear in the results pane below. From there, you can:
 
 ### Query options
 
-The dropdown arrow next to **Run query** exposes additional settings before execution:
+The arrow next to **Run query** opens the **Run query** window, where you can adjust these settings before execution:
 
 | Option | Description |
 | --- | --- |
-| **Default limit** | Caps the number of rows returned. Also adjustable via the gear icon in the command bar. |
 | **Timeout (seconds)** | Stops the query if it hasn't completed within the specified time. Also adjustable via the gear icon in the command bar. |
 | **Run as** | Selects which database credential the query runs under. |
+| **Run automatically on approval** | For credentials that require review, runs the query as soon as it's approved, so it doesn't have to go back to the submitter to run. |
 | **Analyze query** | Generates a query plan instead of returning results. When enabled, the action button changes to **Analyze query**, and results are replaced with the query analysis. |
+
+The number of rows returned is capped at 500 by default. Adjust the limit, along with the timeout, via the gear icon in the command bar.
 
 ### Saving a query
 
 Click **Save query** to open a dialog where you can name the query and optionally mark it as private. Private queries are only visible to you. Queries saved without the private flag (default) are accessible to your team through the Query library.
 
 <Tip>
-Don't know SQL? Bring your own AI model and QueryDesk will make it schema-aware for your databases, so your team can describe what they want in plain language and get a working query back. See [Set up the AI assistant](#set-up-the-ai-assistant), coming next!
+Don't know SQL? Bring your own AI model and QueryDesk will make it schema-aware for your databases, so your team can describe what they want in plain language and get a working query back. See [Set up the AI assistant](#set-up-the-ai-assistant) below.
 </Tip>
 
 ---
 
-## Set up the AI assistant
+## Invite a teammate
 
-The AI assistant lets anyone on your team describe what they want in plain language and get a query back, without needing to know SQL. Rather than shipping a built-in model, QueryDesk has you bring your own: you supply an API key for an AI provider you already trust, and prompts and responses flow directly between your QueryDesk instance and that provider — so you stay in control of where your data goes and which vendor policies apply. One AI model can be configured per QueryDesk instance.
+Approvals need at least two people: one to submit a query and one to approve it. To add your teammate:
 
-QueryDesk makes the AI schema-aware for your specific databases, so the generated queries match the tables and columns you actually have.
-
-Click **AI assistant** in the left navigation (1), then click **Setup AI** (2).
-
-![Query interface with AI assistant highlighted in the left nav and Setup AI button](/guides/getting-started/gsg-003.00.png)
-
-This opens Settings. Navigate to the **Integrations** tab and click **Settings** next to **AI** (3).
-
-![Settings Integrations tab showing GitHub, Linear, Slack, AI, and Calendar Events entries with AI Settings button highlighted](/guides/getting-started/gsg-004.00.png)
-
-Select a model from the **Model** dropdown (4), enter your **API key** for that model (5), and click **Save** (6).
-
-![AI settings modal showing the Model dropdown, API KEY field, and Save button](/guides/getting-started/gsg-005.00.png)
-
-Once saved, return to the **AI assistant** in the left navigation to open a conversation. Describe what you want to query in plain language. The assistant will generate SQL that you can run or edit before executing. Because your database schema is attached as context on every request, the suggestions are tailored to your specific databases without any training step on your part.
-
-![AI assistant conversation showing query results and chat interface with Insert and Run options](/guides/getting-started/gsg-006.00.png)
-
-![Left navigation panel with AI assistant highlighted](/guides/getting-started/gsg-007.00.png)
-
----
-
-## Adding users to approve queries
-
-To test the approval functionality and user setup, it is recommended to set up another user. The process is as follows:
-
-<Note>
-It is not strictly necessary to set up another user in order to test approvals. As a super admin, you can both submit a query for approval and approve it. Obviously, this is not a best practice in prod, but it is useful for illustrating how approvals operate.
-</Note>
-
-1. Click the main **Settings** gear icon in the left-hand navigation pane.
+1. Click the **Settings** gear icon at the bottom of the left navigation.
 2. Click **Users** in the Settings ribbon.
 3. Click the **Invite User** button.
+4. In the **Invite user** window, enter your teammate's name and email address.
+5. Leave all **Permissions** unchecked. Your teammate doesn't need admin permissions to approve queries; approval is granted per database in the next section.
+6. Click **Add & invite**. Your teammate appears in the Users list with a **Pending invite** status.
 
-![Settings Users page showing the Settings gear, Users tab, and Invite User button](/guides/getting-started/gsg-008.00.png)
-
-4. In the **Invite user** window, add the name and email address of the new user and click the **Invite** button.
-
-![Invite user modal with Name and Email fields and Invite button](/guides/getting-started/gsg-009.00.png)
-
-5. Click **Add seats** in the Users Settings section to add a seat so the new user has a QueryDesk license.
-6. This opens the **Billing** Settings page. You will not be charged for this during your trial period.
-7. Enter the number of seats to add, then click **Add seats**. Return to the **Users** Settings page.
-
-![Billing page showing the Seats to Add field and Add seats button](/guides/getting-started/gsg-010.00.png)
-
-![Users page showing seats used, user list with Mark Smith and No license assigned status, and kebab menu](/guides/getting-started/gsg-011.00.png)
-
-8. As shown in the image above, click the kebab menu (⋮) next to the user you added (step 7), then select **Assign license**. You can make any other changes to the user at this time.
-
-![User detail panel showing Assign license button, integration fields, permissions checkboxes, and Roles and Teams sections](/guides/getting-started/gsg-012.00.png)
-
-9. The user is now ready to join your instance/trial.
+<Note>
+The **Invite user** window shows whether adding this user uses an available license or adds a seat, along with the cost of any added seat. You will not be charged during your trial period. **Settings > Billing** always shows your actual billing.
+</Note>
 
 <Important>
-Invited users do not receive an email invitation. Invited users must log in using the URL provided at the top of the page. For example:
+Invited users do not receive an email invitation. Send your teammate your instance URL, which is the address in your browser up to and including `.devhub.cloud`. For example:
 `https://g3flb73q.devhub.cloud` or `https://<your_company_name>.devhub.cloud`
 </Important>
 
-10. Upon navigating to the trial instance URL, the new user will be prompted to log in and create an account. Once that process is completed, the user will be directed to the trial instance.
+7. Your teammate opens the instance URL and signs in with the invited email address. They can enter the address and click **Sign in**, which emails them a sign-in code, or continue with **Google**, **Microsoft**, or **GitHub**.
 
 <Note>
-If you are testing this as a single user, make sure to use a different browser or private browsing window to avoid logging into the same session as the original user.
+When signing in with Google, Microsoft, or GitHub, the account's email address must match the address you invited.
 </Note>
 
-11. Once the new user has logged in, **Connect** to the Devhub database again and select **Settings** from the database menu.
-
-![Database menu with Settings option highlighted](/guides/getting-started/gsg-013.00.png)
-
-12. Once in the database Settings, scroll down to **RBAC** (**R**ole-**B**ased **A**ccess **C**ontrol) and click **Add user**.
-
-![Database Settings page showing the RBAC section with Add user and Add role buttons](/guides/getting-started/gsg-014.00.png)
-
-13. In the **Assign User** dropdown, select the user you want to add and click **Add user**.
-
-![Assign User modal with Mark Smith selected and Add user button](/guides/getting-started/gsg-015.00.png)
-
-14. The new user should now appear in the **RBAC** section of the Devhub database settings. Select the **Permission** dropdown and choose **Approver**. This user can now approve queries.
-
-![RBAC section showing Mark Smith with Permission dropdown open and Approver option highlighted](/guides/getting-started/gsg-016.00.png)
+<Note>
+If you are testing this as a single user with a second email address, use a different browser or private browsing window to avoid logging into the same session as the original user.
+</Note>
 
 ---
 
-## Submit a query for approval
+## Create an approval flow
 
-The Devhub database comes pre-configured with two credentials:
+An approval flow is a credential with **Reviews** set to `1` or higher. Queries run under that credential wait for approval before they execute. The recommended setup uses two credentials:
 
-- **devhub_readonly:** a read-only user. Queries run immediately with no review required, as the user only has read-only access to the database.
-- **devhub:** a read/write user. Queries require one approval before they execute.
+- **Read-only user:** Reviews set to `0`. Queries run immediately, which is safe because the user can't change anything.
+- **Read/write user:** Reviews set to `1` or higher. Any query that could modify data waits for a second set of eyes.
 
-![Database Settings Credentials section showing devhub_readonly and devhub credentials](/guides/getting-started/gsg-017.00.png)
+This two-credential setup is a recommended best practice: a read-only credential for unrestricted data exploration, and a read/write credential with a review gate on any query that can modify data. You connected the read-only user during setup. Now you'll add the read/write user and make your teammate an approver.
 
-This two-credential setup reflects a recommended best practice: a read-only credential for unrestricted data exploration, and a read/write credential with a review gate on any query that can modify data.
+<Important>
+Changes on the database settings page save as you make them. There is no **Save** button. Complete every field of a new credential before leaving the page.
+</Important>
+
+### Add the read/write credential
+
+1. On the Databases page, click the gear icon next to your database. From the query interface, you can also click **Settings** in the database menu.
+2. In the **Credentials** section, click **+ Add Credential**.
+3. Enter the read/write user's **Username** and **Password**.
+4. Set **Reviews** to `1`.
+5. Click **Test Connection** under the new credential. **Connection successful** confirms QueryDesk can reach your database as that user.
+
+Each credential has the following fields:
+
+- **Username** - the database username.
+- **Password** - the password for that user.
+- **Reviews** - `0` executes queries immediately. Any other number holds queries in the pending queue until that many approvals are collected. A user with read-only access would typically be set to `0`.
+- **Timeout (seconds)** - stops queries run under this credential if they haven't completed within the specified time.
+- **Default** - when checked on a credential with Reviews set to `0`, this credential is used by default for table views and proxy connections.
 
 <Note>
 You can have as many reviews in the Reviews field as you have approvers. For example, setting Reviews to `5` instead of `1` would require 5 separate approvals from 5 separate reviewers.
 </Note>
 
-To see the approval flow in action:
+### Make your teammate an approver
 
-1. Click the dropdown arrow next to **Run query** and set **Run as** to `devhub`.
-2. Type a query in the query pane. A simple `SELECT` statement is fine.
-3. Click **Request review**.
+Your teammate must have signed in at least once before these steps.
 
-![Run query modal showing the devhub credential selected, 1 review required notice, and Request review button](/guides/getting-started/gsg-018.00.png)
+1. On the same settings page, scroll down to **RBAC** (**R**ole-**B**ased **A**ccess **C**ontrol) and click **Add user**.
+2. In the **Assign user** dropdown, select your teammate and click **Add user**.
+3. In your teammate's **Permission** dropdown, select **Approver**. This user can now approve queries on this database.
 
-Because the `devhub` credential requires one review, the query is not executed immediately. It is submitted to the **Pending queries** queue instead. Both the submitting user and the reviewer can access the pending query via **Pending queries** in the left-hand navigation.
+Leave **Restrict access to assigned users only** turned off for now. While it's off, any user in your QueryDesk organization can run queries against this database, and RBAC entries grant additional permissions such as **Approver**.
+
+### Other database settings
+
+The database settings page includes settings that aren't part of initial setup:
+
+- **Agent** - used to connect to databases inside a private network. Agents are configured in **Settings > Agents**. If you're unsure whether your database requires one, ask your IT, DevOps, or Engineering team.
+- **Group (optional)** - groups multiple databases together in the Databases list.
+- **Encryption** - the same SSL settings as the **Advanced** section of the setup page.
+- **Slack channel** - if you've connected Slack in Settings, enter a channel name here, for example `#prod-query-approvals`. Query submission notifications will be sent to that channel when a query is pending review.
+- **Restrict access to assigned users only** - limits access to the users and roles listed in RBAC. For each user or role, set a **Permission** (**Run Queries** or **Approver**) and optionally assign a **Data protection policy**. Users are managed in **Settings > Users**, roles in **Settings > Roles**, and data protection policies via the **Manage policies** link in the RBAC section. A role can also grant super admin, manager or billing admin to everyone in it, from **Grant permission** on the role's page.
+- **Allow super admins to bypass required reviews** - adds a **Bypass & run** button to pending queries for super admins, which runs the query without an approval. On by default.
 
 ---
 
-## Approve a pending query
+## Run a query through an approval flow
 
-Click **Pending queries** in the left navigation. Your submitted query appears here.
+### Submit a query for review
 
-![Pending queries view showing the submitted query with metadata, approval counter, and action buttons](/guides/getting-started/gsg-019.00.png)
+1. In the query interface, type a query in the query pane. If you're using the [PTFG sample database](/guides/sample-database), this freezes a single fictional account:
+
+```sql
+UPDATE accounts
+SET status = 'FROZEN'
+WHERE account_number = 'PTFG-00100003';
+```
+
+If you connected your own database, a simple `SELECT` statement is fine. Any query run under the read/write credential requires review, including a `SELECT`.
+
+2. Click the arrow next to **Run query** to open the **Run query** window.
+3. Set **Run as** to your read/write credential (1). The window shows **1 review required**.
+4. Click **Request review** (2).
+
+![Run query window showing Run as set to the read/write credential, 1 review required, and the Request review button](/guides/getting-started/gsg-015.01.png)
+
+<Tip>
+Turn on **Run automatically on approval** in the **Run query** window to have the query run as soon as it's approved. Nobody has to come back to run it.
+</Tip>
+
+Because the read/write credential requires one review, the query is not executed immediately. A notification confirms that the query is pending approval, and the query is submitted to the **Pending queries** queue. Both the submitting user and the reviewer can access the pending query via **Pending queries** in the left-hand navigation.
+
+<Important>
+QueryDesk does not yet notify approvers in the app or by email. If you've connected Slack and set a Slack channel on the database settings page, a notification is posted there. Otherwise, let your teammate know a query is waiting.
+</Important>
+
+### Approve the query
+
+Your teammate approves the query:
+
+1. Click **Pending queries** in the left navigation. The **Approver for** filter shows only the queries this user can approve.
+2. Review the query and click **Approve**. Approving does not execute the query.
+
+![Pending queries from the approver's view showing the UPDATE query, 0 of 1 approvals, and the Approve button](/guides/getting-started/gsg-016.01.png)
 
 Each pending query displays the database and credentials it will run against, the timeout setting, when it was last edited, and the full query text.
-
-From this view, the submitting user can:
-
-- Click the link icon to copy the link to the clipboard
-- Click **Edit** to modify the query
-- Click **Delete** to discard it
-- Click the comment icon to comment on the query
-
-The second user you created in [Adding users to approve queries](#adding-users-to-approve-queries) above will act as the approver. When that user checks **Pending queries**, they will see the following:
-
-![Pending queries view from the approver perspective showing the Approve button](/guides/getting-started/gsg-020.00.png)
 
 From this view, a user with approver permissions can:
 
 - Click the link icon to copy the link to the clipboard
-- Click **Approve** to approve the query (note that approving does not execute the query)
+- Click **Approve** to approve the query
 - Click the comment icon to comment on the query
 
-Once the query has been approved, the original submitting user will see a **Run Query** button appear on that query in their Pending queries list. Click **Run Query** to execute it.
+### Run the approved query
 
-![Pending queries view showing the approved query with Run Query button](/guides/getting-started/gsg-021.00.png)
+Back in your own session:
+
+1. Click **Pending queries** in the left navigation. The approval count on your query now reads **1/1**.
+2. Click **Run Query**. The **Query result** window shows the outcome, for example `UPDATE 1`.
+3. Click **Done**.
 
 Once a query has been run, it is removed from the **Pending queries** view.
 
+While a query is pending, the submitting user can also click **Edit** to modify it, **Delete** to discard it, or the comment icon to comment on it.
+
 When your team uses QueryDesk in production, this separation between submitter and approver is the intended workflow. A user submits a write query; an engineer, DevOps lead, or designated approver reviews it before it runs. Queries that pose a real risk to production data don't execute until at least a second set of eyes clears them.
+
+<Note>
+Evaluating on your own? With **Allow super admins to bypass required reviews** turned on (the default), a super admin sees a **Bypass & run** button on their pending query in **Pending queries**. Click it to run the query without an approval. Bypassed queries are flagged in the audit log, and the **Bypassed only** filter shows them all. Obviously, this is not a best practice in prod. For production databases, turn the setting off so every query on a gated credential gets its review.
+</Note>
 
 ---
 
@@ -273,9 +307,9 @@ When your team uses QueryDesk in production, this separation between submitter a
 
 Click **Audit log** in the left navigation.
 
-Every query that ran during this session is captured here: the database it ran against, the user and credentials, the timestamp, and the full query text. The queries you ran as `devhub_readonly` are here. So is the query you submitted and approved as `devhub`.
+Every query that ran during this session is captured here: the database it ran against, the user and credentials, the timestamp, and the full query text. Queries that failed are recorded too. The queries you ran as your read-only user are here. So is the query you submitted and your teammate approved, along with its approval count.
 
-![Audit log showing query entries with run timestamps, failure indicators, and error notifications](/guides/getting-started/gsg-022.00.png)
+![Audit log entry for the approved UPDATE query showing the database, credential, submitting user, 1 of 1 approvals, and run time](/guides/getting-started/gsg-016.04.png)
 
 No configuration required. The audit log is always on. Watching. Waiting.
 
@@ -284,66 +318,23 @@ You can also feed this log into your existing security tooling.
 
 ---
 
-## Connect your own database
+## Set up the AI assistant
 
-The Devhub database covers everything you need to evaluate QueryDesk's core features. When you're ready to connect a real database, click **New database** in the upper right of the Databases page.
+The AI assistant lets anyone on your team describe what they want in plain language and get a query back, without needing to know SQL. Rather than shipping a built-in model, QueryDesk has you bring your own: you supply an API key for an AI provider you already trust, and prompts and responses flow directly between your QueryDesk instance and that provider. You stay in control of where your data goes and which vendor policies apply. One AI model can be configured per QueryDesk instance.
 
-If you don't have the connection details (hostname, port, database name, and credentials), get them from your IT, DevOps, Engineering, or Operations team before starting this step.
+QueryDesk makes the AI schema-aware for your specific databases, so the generated queries match the tables and columns you actually have.
 
-### Database configuration
+1. Click **AI assistant** in the left navigation, then click **Setup AI**. This opens Settings.
+2. Click the **Integrations** tab, then click **Settings** next to **AI**.
+3. Select a model from the **Model** dropdown, enter your **API key** for that model, and click **Save**.
 
-- **Display name** - any name that's useful to you.
-- **Database IP or hostname** - the IP address or hostname only. For example: `10.1.0.132` or `myproddatabase.123456789.us-east-1.rds.amazonaws.com`.
-- **Port** - the port for your database type. Leave blank to use the default for the selected type.
-- **Database name** - the actual database name, not the display name. For MySQL, this is the schema name.
-- **Database type** - select from: PostgreSQL, MySQL, ClickHouse, SQL Server, Oracle, etc.
-- **Agent** - used to connect to databases inside a private network. Agents are configured in Settings. If you're unsure whether your database requires one, ask your IT, DevOps, or Engineering team.
-- **Group (optional)** - groups multiple databases together in the Databases list.
-
-### Credentials
-
-Click **+ Add Credential** to add at least one set of database credentials.
-
-- **Username** - the database username.
-- **Password** - the password for that user.
-- **Reviews** - `0` executes queries immediately. Any other number holds queries in the pending queue until that many approvals are collected. A user with read-only access would typically be set to `0`.
-- **Default** - when checked on a credential with Reviews set to `0`, this credential is used by default for table views and proxy connections.
-
-<Tip>
-Create two credentials: a read-only user with Reviews set to `0`, and a read/write user with Reviews set to `1` or higher. The Devhub database uses exactly this pattern.
-</Tip>
-
-Click **Test Connection** after entering credentials to verify that QueryDesk can reach your database before saving.
-
-### Encryption
-
-If your database requires encryption, enable it with the toggle.
-You can then paste the server CA certificate, client key, and client certificate (which may be optional depending on your database configuration).
-Work with your IT, DevOps, or Engineering team if you need help obtaining these.
-
-### Slack configuration
-
-If you've connected Slack in Settings, enter a channel name here — for example, `#prod-query-approvals`. Query submission notifications will be sent to that channel when a query is pending review.
-
-### Access control
-
-By default, any user in your QueryDesk organization can run queries against a connected database, subject to any data protection policies in place. To restrict access to specific users or roles only:
-
-1. Enable **Restrict access** on the database settings page.
-2. Click **Add user** or **Add role** to assign access.
-3. For each user or role, set a **Permission** (the default options are **Run Queries** and **Approver**) and optionally assign a **Data protection policy**.
-
-Users are managed in **Settings > Users**. Roles are managed in **Settings > Roles**. Data protection policies are managed via the **Manage policies** link in the access control section of the database settings page.
-
-### Connect
-
-Once the configuration is complete, open the **Actions** menu in the upper right of the database settings page and select **Connect**.
+Once saved, return to the **AI assistant** in the left navigation to open a conversation. Describe what you want to query in plain language. The assistant will generate SQL that you can run or edit before executing. Because your database schema is attached as context on every request, the suggestions are tailored to your specific databases without any training step on your part. The current date and time, in the timezone set in your account settings, are attached too, so relative requests like "last week" resolve against the real calendar.
 
 ---
 
 ## What's next
 
-With the Devhub database explored and your own database connected, you've covered how QueryDesk handles the fundamentals: unified database access, controlled write operations with approval flows, and automatic audit logging. The following areas are worth exploring next:
+With your database connected and your first approval flow complete, you've covered how QueryDesk handles the fundamentals: unified database access, controlled write operations with approval flows, and automatic audit logging. The following areas are worth exploring next:
 
 - **Integrations:** connect Slack, Linear, AI, and GitHub to your QueryDesk instance to enable workflows.
 - **Workflows:** automate multi-step processes by chaining database queries, API calls, Slack notifications, and human approvals into a single, repeatable operation.

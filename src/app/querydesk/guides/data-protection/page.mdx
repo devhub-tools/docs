@@ -54,6 +54,18 @@ SELECT id FROM users WHERE email = 'test@example.com';
 SELECT id FROM users WHERE '***' = 'test@example.com';
 ```
 
+## Views
+
+Views and materialized views are listed alongside tables (on Postgres, those in the `public` schema) and are governed by their own column actions. An action on a base table column does not carry through to a view that reads it, so a view column with no action is hidden until a policy or rule shows it.
+
+```sql
+-- users.email is shown, but the view's email column has no action
+CREATE VIEW active_users AS SELECT id, email FROM users WHERE active;
+
+-- Rewritten query with data protection
+SELECT '***' AS id, '***' AS email FROM active_users;
+```
+
 ## Statements That Are Rejected
 
 Protection can only be enforced on statements the rewriter fully understands: `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and the unions and subqueries built from them. Anything else is rejected with an error rather than forwarded, because a statement that can't be rewritten can't be masked.

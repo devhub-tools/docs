@@ -25,7 +25,7 @@ decides which one a visitor gets:
 
 | host                 | content              |
 | -------------------- | -------------------- |
-| `docs.querydesk.io`  | `src/app/querydesk/` |
+| `docs.querydesk.com` | `src/app/querydesk/` |
 | `docs.terradesk.io`  | `src/app/terradesk/` |
 
 `src/middleware.ts` rewrites an incoming path onto the right subtree, so the
