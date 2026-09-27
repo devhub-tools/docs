@@ -129,6 +129,7 @@ Every key has a permission set and an optional expiry, and the permission is che
 - **The organization is the boundary.** Every record is scoped by `organization_id`, and so is every query.
 - **Permissions are layered.** A check resolves as `super_admin` bypass → organization-wide role bypass → a per-object grant.
 - **Grants are per resource.** A permission ties an action, such as `approve` on one database, to a user or a role.
+- **A role can also grant organization permissions.** A super admin can give a role super admin, manager or billing admin, and everyone in the role holds it for as long as they are in it. With a groups claim, that lets a directory group make its members super admins, and leaving the group ends it at their next sign-in. Taking a permission off a role never clears a member's own box.
 - **Membership is archived, not deleted**, so old queries and approvals still resolve to a person.
 
 ## AI access is opt-in

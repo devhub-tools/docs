@@ -27,6 +27,8 @@ export function middleware(request: NextRequest) {
   return NextResponse.rewrite(url)
 }
 
+// Files in `public/` (images, downloads) are shared by every site and served
+// as-is; only extensionless page paths get the site prefix.
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt).*)'],
+  matcher: ['/((?!_next/static|_next/image|.*\\.[^/]+$).*)'],
 }

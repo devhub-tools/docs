@@ -35,7 +35,7 @@ export const sites: Record<SiteId, Site> = {
   querydesk: {
     id: 'querydesk',
     name: 'QueryDesk',
-    hosts: ['docs.querydesk.io'],
+    hosts: ['docs.querydesk.com'],
     description:
       'Find useful information on how to get the most out of QueryDesk.',
     navigation: [
@@ -44,9 +44,11 @@ export const sites: Record<SiteId, Site> = {
         links: [
           { title: 'Introduction', href: '/' },
           { title: 'Getting Started', href: '/guides/getting-started' },
+          { title: 'Sample Database', href: '/guides/sample-database' },
           { title: 'Authentication', href: '/guides/authentication' },
           { title: 'Terraform', href: '/guides/terraform' },
           { title: 'GitHub Actions', href: '/guides/github-actions' },
+          { title: 'Seat Automation', href: '/guides/seat-automation' },
           { title: 'Workflows', href: '/guides/workflows' },
           { title: 'Data Protection', href: '/guides/data-protection' },
           { title: 'Security', href: '/guides/security' },
@@ -89,6 +91,12 @@ export const sites: Record<SiteId, Site> = {
           name: 'GitHub Actions',
           description:
             'Learn how to manage your QueryDesk resources with GitHub Actions.',
+        },
+        {
+          href: '/guides/seat-automation',
+          name: 'Seat Automation',
+          description:
+            'Learn how to add or remove seats on your license from an automated flow.',
         },
         {
           href: '/guides/workflows',

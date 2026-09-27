@@ -1,0 +1,63 @@
+export const metadata = {
+  title: 'Seat Automation',
+  description:
+    'In this guide, we will look at how to add or remove seats on your license from an automated flow',
+}
+
+# Seat Automation
+
+Add or remove seats on your license from an automated flow, for example an Okta workflow that buys a seat when someone joins a group. {{ className: 'lead' }}
+
+## Get your license key
+
+Calls are authenticated with your license key. A billing admin can find it in Settings > Billing, under Seat automation, by clicking **Show license key**. Keep it secret: anyone holding it can buy seats on your license.
+
+## Change your seats
+
+Send the number of seats to add, or a negative number to remove, to the licensing service:
+
+```
+curl -X POST https://licensing.devhub.cloud/license/extra-seats \
+  -H "x-license-key: <your license key>" \
+  -H "Content-Type: application/json" \
+  -d '{"change": 1}'
+```
+
+Use `{"change": -1}` to remove a seat, or `{"remove_unused": true}` to remove every seat that is both unused and extra. The change is relative, so two flows that each add a seat at the same moment leave two more seats, not one.
+
+The response is your new total and how many seats are in use:
+
+```json
+{"total_seats": 11, "seats_in_use": 9}
+```
+
+If you have linked installs, they share one seat pool, and every install sees the new total the next time it refreshes its license.
+
+## Billing
+
+Added seats are billed exactly as adding them in Settings > Billing: a charge to your saved payment method for the days left in the current billing period. If the charge fails, no seats are added.
+
+Removing seats follows the Billing screen's rule. Only seats that are both unused and extra (beyond those included in your plan) can be removed, and the removal takes effect at your next renewal.
+
+## Unused-seat limit
+
+To stop a misbehaving flow from charging in a loop, an add is refused if it would leave more than 5 unused seats (total seats minus seats in use). A flow that buys one seat per new person never comes close, and adds succeed again once people take the unused seats. The limit does not apply to seats added in Settings > Billing.
+
+## Errors
+
+Every error returns a JSON body with an `error` message saying why:
+
+```json
+{"error": "Only 2 unused extra seats can be removed"}
+```
+
+| Status | Error | Cause |
+| --- | --- | --- |
+| 401 | `invalid license credential` | The `x-license-key` header is missing, malformed, or not a valid license key. |
+| 402 | `License has no saved payment method` | Add a payment method in Settings > Billing. |
+| 402 | `The charge for the added seats failed` | The payment method was declined. No seats were added. |
+| 422 | `change must be a non-zero integer` | The body has no `change`, or it is `0` or not a whole number. |
+| 422 | `License is canceled or expired` | Seats can only be added while the license is set to renew and has not expired. |
+| 422 | `License has 3 unused seats; adding 4 would leave 7, and an add may not leave more than 5 unused` | The add would pass the unused-seat limit. A smaller add may still fit. |
+| 422 | `Only 2 unused extra seats can be removed` | The removal asked for more seats than are unused and extra. |
+| 422 | `No unused extra seats can be removed` | Every extra seat is in use. |
