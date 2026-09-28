@@ -80,6 +80,15 @@ DO $$ ... $$;
 CALL some_procedure();
 ```
 
+A redacted column also can't decide which rows come back or what they add up to. Masked inside a `WHERE`, `HAVING` or `JOIN ... ON`, any comparison (`CASE WHEN`, `IN`, `BETWEEN`, `IS NULL`), a `GROUP BY`, `ORDER BY` or `DISTINCT`, an aggregate such as `count` or `max`, or a `UNION` that removes duplicates, it would make the result silently wrong: `'***' = '***'` matches every pair of rows, `'***' = 'x'` matches none, and `count(DISTINCT '***')` is always 1. So the statement is refused with an error naming the column:
+
+```sql
+SELECT id FROM users WHERE ssn = '123-45-6789';
+-- Column 'users.ssn' is redacted, so it can't be used to filter, join or compare rows
+```
+
+Show the column in the policy, or filter on one that is shown.
+
 Session and transaction statements carry no row data, so they still pass through unchanged and drivers keep working: `SET`, `SHOW`, `RESET`, `BEGIN`, `COMMIT`, and `ROLLBACK`.
 
 This applies to every path that runs a protected query — the QueryDesk web UI, the Postgres proxy, and the [MCP `run_query` tool](/ai/mcp-tools).
