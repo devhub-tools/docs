@@ -145,7 +145,7 @@ Saves a SQL query to the organization's query library so it can be reused later.
 
 ### search_audit_log
 
-Searches executed queries for a database over a date range to see what ran and who ran it — useful for debugging "what changed in prod". Scoped to a database the user can access; returns the SQL plus who ran it, approvals, and review comments — never result rows. The date range is interpreted in the user's configured timezone. Returns at most the 100 most recent matches — narrow the date range or filters to see older activity.
+Searches executed queries for a database over a date range to see what ran and who ran it — useful for debugging "what changed in prod". Scoped to a database the user can access; returns the SQL plus who ran it, approvals, and review comments — never result rows. The date range is interpreted in the user's configured timezone. Returns at most the 100 most recent matches — narrow the date range or filters to see older activity. A user who is neither a super admin nor an Auditor sees only the queries they ran or approved.
 
 <Properties>
   <Property name="database_id" type="string, required">

@@ -31,7 +31,9 @@ An MCP session always acts as **the user who authorized it**. When you connect, 
 - The AI's per-database caps and the peer-review approval gate apply exactly as they do to a person — see [AI Governance](/ai/governance).
 - Every query the AI runs is attributed to you in the [audit log](/ai/governance#ai-labeling-and-the-audit-log) and labeled as AI-originated.
 
-The AI is never a privileged service account — it inherits your permissions and nothing more.
+The AI inherits your permissions and nothing more.
+
+An agent that runs with nobody to sign in connects as a [service account](#service-accounts) instead.
 
 ## Authorizing a client (OAuth 2.1)
 
@@ -215,6 +217,52 @@ claude mcp add --transport http devhub https://your-org.devhub.cloud/mcp
 </CodeGroup>
 
 The first time you connect, your browser opens to the DevHub consent screen; approve it and the client is connected. From there the AI can call the [MCP tools](/ai/mcp-tools) — subject to the controls described in [AI Governance](/ai/governance).
+
+## Service accounts
+
+A service account connects an unattended agent, such as a scheduled job or an incident bot, to the MCP server. It belongs to your organization, not to a person. It takes no seat and is not listed under Users. The agent sends a static bearer token on every request, with no sign-in, no consent screen and no refresh. Any number of agent instances can use the same token at once.
+
+Only a super admin can create, edit, rotate or revoke service accounts, under **Settings > Service accounts**.
+
+### Create one
+
+1. Open **Settings > Service accounts** and choose **New service account**.
+2. Give it a name and, if you want the token to stop working on a date, an expiration.
+3. Copy the token. DevHub shows it once and stores only a hash, so it cannot show it again.
+
+A new service account can call no tools and reaches only databases that are open to all users. Open its row to turn on tools and give it databases.
+
+### Connect the agent
+
+Send the token as a bearer token on every MCP request:
+
+```text {{ title: 'Authenticated MCP request' }}
+Authorization: Bearer dhsa_...
+```
+
+```bash {{ title: 'Claude Code' }}
+claude mcp add --transport http devhub https://your-org.devhub.cloud/mcp \
+  --header "Authorization: Bearer dhsa_..."
+```
+
+### Give it databases and tools
+
+A service account gets databases the same two ways a member does.
+
+- On a database's settings page, under **RBAC**, choose **Add service account**. The grant is always Run Queries, and you can assign it a data protection policy.
+- Assign the service account a role, from the role's page or from the service account's drawer. It gets every database the role is granted Run Queries on. A role's Approver grant gives a service account nothing.
+
+On a database it reaches, the agent can run as any credential you allowed for AI, while AI access is on for that database. If you turn AI access off, or no credential is AI-allowed any more, the drawer marks the grant **Unreachable** and the agent loses the database without anyone editing the service account.
+
+In the drawer, turn on the [tools](/ai/mcp-tools) the agent may call. Every tool starts off. The agent is offered only the tools that are on, and a call to any other tool is refused. A tool added to the MCP server later starts off and is marked **New** until you next change the selection.
+
+### Rotate the token
+
+Choose **Rotate token** in the drawer to replace a lost or exposed token. The service account keeps its databases, tools and audit trail, and DevHub shows the new token once. The previous token stops working on the next MCP request, so update your agents with the new token right away. Rotating does not change the expiration.
+
+### Expiration and revocation
+
+When a service account reaches its expiration, or you choose **Revoke**, the next MCP request with its token fails as unauthorized. Other service accounts and members' connected applications keep working. Revoking cannot be undone. The audit log keeps the service account's queries under its name.
 
 ### Custom clients
 

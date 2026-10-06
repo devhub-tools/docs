@@ -60,6 +60,21 @@ While a query is awaiting peer review, its SQL is shown to the reviewer exactly 
 
 AI queries are redacted per the user's [data-protection policy](/guides/data-protection), exactly like queries that user runs by hand. `get_data_protection` lets the AI see which columns are hidden versus visible for the current user before it queries, so it doesn't rely on data it will never be shown.
 
+## Service accounts
+
+A [service account](/ai/mcp-server#service-accounts) is not a privileged account. An unattended agent that connects with one is governed like this:
+
+- **Tools.** It can call only the tools turned on for it. None is on by default.
+- **Database access.** It reaches a database that is open to all users, one that grants it directly, or one granted to a role it is assigned. It has no super admin bypass, and a role's super admin, manager and billing admin permissions do not apply to it.
+- **Credentials.** On a database it reaches it runs only as an AI-allowed credential, and only while AI access is on for that database.
+- **Caps.** The row cap, the result size limit and the credential's timeout apply as they do to every AI query.
+- **Data protection.** The policy on the grant it came in through, direct first and then by role, combines with the database's AI data protection policy. The stricter action wins per column.
+- **Peer review.** A credential that requires review holds its query until members approve it. A service account never approves a query, its own or anyone else's.
+- **Audit log.** Its queries carry the AI badge and its name in place of a user, also after it is revoked.
+- **Reading the audit log.** With the `search_audit_log` tool on, it reads only the queries it ran. Turn on **Auditor** for it, or assign it a role that carries Auditor, and it reads every query on the databases it reaches.
+
+Where a tool is limited to the caller's own things, such as retained results and private saved queries, the service account is the caller. It never gets a member's.
+
 ## AI labeling and the audit log
 
 Every query records **how it originated**, so AI activity is never indistinguishable from human activity:
@@ -67,4 +82,4 @@ Every query records **how it originated**, so AI activity is never indistinguish
 - Queries run by a person are labeled as human.
 - Queries run through the in-app AI assistant or the MCP server are marked as AI-originated and carry a blue **AI** badge.
 
-The AI badge appears everywhere queries are listed — including the pending-queries list and the [audit log](/guides/getting-started) — so reviewers can tell at a glance that a query came from the AI, and every AI query is attributed to the user who authorized it. AI queries that originated from an in-app conversation are also linked back to that conversation for traceability.
+The AI badge appears everywhere queries are listed, including the pending-queries list and the [audit log](/guides/getting-started), so reviewers can tell at a glance that a query came from the AI, and every AI query is attributed to the user who authorized it, or to the service account that ran it. AI queries that originated from an in-app conversation are also linked back to that conversation for traceability.

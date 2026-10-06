@@ -14,7 +14,7 @@ You may notice references to Devhub throughout, which is the collection of tools
 
 ### Cloud hosted
 
-All cloud hosted installations are isolated and are single tenant. You can sign up for a free trial at [querydesk.com](https://querydesk.com).
+All cloud hosted installations are isolated and are single tenant. You can sign up for a free trial at [querydesk.com](https://querydesk.com). Signing up requires a work email address.
 
 You will be assigned a unique subdomain, to customize it please reach out to support@devhub.tools.
 
@@ -36,7 +36,7 @@ If you would like us to manage your installation in your own cloud, please reach
 
 You will need the following to complete this guide:
 
-- **A database QueryDesk can reach.** QueryDesk Cloud connects to your database from `35.224.237.12`, so your database's firewall, security group, or allowlist must accept connections from that address. If your database can't be reached from the internet, QueryDesk can connect through an agent running inside its network instead.
+- **A database QueryDesk can reach.** QueryDesk Cloud connects to your database from `35.224.237.12`, so your database's firewall, security group, or allowlist must accept connections from that address. If your database can't be reached from the internet, QueryDesk can connect through a [Tunnel](/guides/tunnels) running inside its network instead.
 - **Two database users:** a read-only user and a read/write user. QueryDesk uses these as credentials, and the pair is what makes approval flows possible. If you don't manage database users, get them from your IT, DevOps, Engineering, or Operations team before starting.
 - **A teammate's email address.** Approvals need a second person. If you're evaluating on your own, a second email address you control works too.
 
@@ -71,7 +71,7 @@ Use the read-only user here. You'll add the read/write user in [Create an approv
 5. Click **Test connection**. When **Connection successful** appears, click **Finish setup**.
 
 <Important>
-If the connection test fails, check the network first. The most common causes are a firewall or allowlist that doesn't include `35.224.237.12`, an incorrect host or port, or an SSL setting that doesn't match what your database requires. If the database isn't reachable from the internet, click **connect through an agent** on the setup page.
+If the connection test fails, check the network first. The most common causes are a firewall or allowlist that doesn't include `35.224.237.12`, an incorrect host or port, or an SSL setting that doesn't match what your database requires. If the database isn't reachable from the internet, click **connect through a Tunnel** on the setup page.
 </Important>
 
 ---
@@ -88,13 +88,13 @@ The left navigation gives you access to everything in QueryDesk:
 | --- | --- |
 | **Databases** | Your connected databases and the starting point for running queries |
 | **Pending queries** | Queries waiting for approval before execution |
-| **AI assistant** | Query generation using an AI model you connect via API key |
 | **Query library** | Your saved private queries |
 | **Shared queries** | Queries shared across your organization |
-| **Labels** | Tags for organizing queries in the **Query library** only |
 | **Dashboards** | Data views built from your database connections |
 | **Workflows** | Automated multi-step processes combining queries, API calls, and notifications |
 | **Audit log** | A complete record of every query run against every connected database |
+
+**Apps**, above the icons at the bottom of the left navigation, switches between the products your organization is licensed for. The **Settings** gear opens Settings, which has its own navigation listing every settings page; use **Apps** there to return to a product. Labels, the tags that organize saved queries, are managed from **Query library**: click **Manage** next to **Labels**.
 
 ---
 
@@ -153,7 +153,7 @@ Don't know SQL? Bring your own AI model and QueryDesk will make it schema-aware 
 Approvals need at least two people: one to submit a query and one to approve it. To add your teammate:
 
 1. Click the **Settings** gear icon at the bottom of the left navigation.
-2. Click **Users** in the Settings ribbon.
+2. Click **Users** in the Settings navigation.
 3. Click the **Invite User** button.
 4. In the **Invite user** window, enter your teammate's name and email address.
 5. Leave all **Permissions** unchecked. Your teammate doesn't need admin permissions to approve queries; approval is granted per database in the next section.
@@ -227,7 +227,7 @@ Leave **Restrict access to assigned users only** turned off for now. While it's 
 
 The database settings page includes settings that aren't part of initial setup:
 
-- **Agent** - used to connect to databases inside a private network. Agents are configured in **Settings > Agents**. If you're unsure whether your database requires one, ask your IT, DevOps, or Engineering team.
+- **Tunnel** - used to connect to databases inside a private network. Tunnels are configured in **Settings > Tunnels**. See [Tunnels](/guides/tunnels). If you're unsure whether your database requires one, ask your IT, DevOps, or Engineering team.
 - **Group (optional)** - groups multiple databases together in the Databases list.
 - **Encryption** - the same SSL settings as the **Advanced** section of the setup page.
 - **Slack channel** - if you've connected Slack in Settings, enter a channel name here, for example `#prod-query-approvals`. Query submission notifications will be sent to that channel when a query is pending review.
@@ -307,7 +307,7 @@ Evaluating on your own? With **Allow super admins to bypass required reviews** t
 
 Click **Audit log** in the left navigation.
 
-Every query that ran during this session is captured here: the database it ran against, the user and credentials, the timestamp, and the full query text. Queries that failed are recorded too. The queries you ran as your read-only user are here. So is the query you submitted and your teammate approved, along with its approval count.
+Every query that ran during this session is captured here: the database it ran against, the user and credentials, the timestamp, and the full query text. Queries that failed are recorded too. The queries you ran as your read-only user are here. So is the query you submitted and your teammate approved, along with its approval count. Rest the pointer on the initials under the count, or tab to them, to see who approved and when.
 
 ![Audit log entry for the approved UPDATE query showing the database, credential, submitting user, 1 of 1 approvals, and run time](/guides/getting-started/gsg-016.04.png)
 
@@ -324,11 +324,11 @@ The AI assistant lets anyone on your team describe what they want in plain langu
 
 QueryDesk makes the AI schema-aware for your specific databases, so the generated queries match the tables and columns you actually have.
 
-1. Click **AI assistant** in the left navigation, then click **Setup AI**. This opens Settings.
-2. Click the **Integrations** tab, then click **Settings** next to **AI**.
+1. Open a database from **Databases**, click **AI assistant** in the database panel, then click **Setup AI**. This opens Settings.
+2. Click **Integrations** in the Settings navigation, then click **Settings** next to **AI**.
 3. Select a model from the **Model** dropdown, enter your **API key** for that model, and click **Save**.
 
-Once saved, return to the **AI assistant** in the left navigation to open a conversation. Describe what you want to query in plain language. The assistant will generate SQL that you can run or edit before executing. Because your database schema is attached as context on every request, the suggestions are tailored to your specific databases without any training step on your part. The current date and time, in the timezone set in your account settings, are attached too, so relative requests like "last week" resolve against the real calendar.
+Once saved, return to **AI assistant** in the database panel to open a conversation. Describe what you want to query in plain language. The assistant will generate SQL that you can run or edit before executing. Because your database schema is attached as context on every request, the suggestions are tailored to your specific databases without any training step on your part. The current date and time, in the timezone set in your account settings, are attached too, so relative requests like "last week" resolve against the real calendar.
 
 ---
 

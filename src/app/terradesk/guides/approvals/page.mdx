@@ -12,7 +12,7 @@ Nothing applies in TerraDesk until the **apply gate** passes. The gate is the ch
 
 A plan may apply when **both** are true:
 
-1. **The count is met** — the plan has at least as many approvals as the strictest requirement any of its resource changes carries.
+1. **The count is met**: every resource policy governing one of the plan's changes has its approvals, and the plan meets the workspace baseline if any of its changes is still on it.
 2. **Every named-required approver has approved** — today that means every active reservation's reserver appears among the plan's approvals.
 
 Approvals are recorded on the plan itself, each one carrying the organization user who gave it and the time they gave it. Plans are never deleted, so the record of who approved what survives the workspace being archived.
@@ -23,7 +23,9 @@ The gate is evaluated at apply time, not when the plan was created. A requiremen
 
 ## Baseline approvals
 
-A workspace's **required approvals** is the floor every apply must meet, regardless of which resources it touches. It defaults to `0`, which means anyone who can see the workspace can apply.
+A workspace's **required approvals** is the baseline: the number of approvals needed for every resource change that no resource policy sets a count for. It defaults to `0`, which means anyone who can see the workspace can apply.
+
+A [resource policy](#resource-policies) with an explicit count replaces the baseline for the resources it governs. The baseline still applies to the plan as a whole whenever at least one of its changes is left on it.
 
 Approving requires the `approve` permission on the workspace, granted per workspace to an organization user or to a role. `super_admin` short-circuits every permission check in the organization.
 
@@ -43,7 +45,7 @@ A reservation is not a Terraform state lock. It never touches the lock that `ter
 
 ## Resource policies
 
-A **resource policy** is an organization-level rule applied to one or many workspaces that raises what an apply touching certain resources needs. It is how you express "deleting a database needs two approvals, one of them from the data team" without making every apply in the workspace expensive.
+A **resource policy** is an organization-level rule applied to one or many workspaces that sets what an apply touching certain resources needs. It is how you express "deleting a database needs three approvals, one of them from the data team" without making every apply in the workspace expensive, and "the status page module needs one approval" without lowering the bar for everything else.
 
 ### Scoping resources
 
@@ -70,12 +72,23 @@ There is no way to carve a resource out of a pattern. Assignment and matching ar
 
 Each policy carries one **requirement** per resource change action — create, update, delete, replace. A requirement is:
 
-- **A count of approvals**, or `Auto`, meaning the workspace's baseline decides.
+- **A count of approvals** (1, 2 or 3), or `Auto`, meaning the workspace's baseline decides.
 - **A list of named approvers** — organization users and/or roles.
 
 It is satisfied when the count is met **and** at least one named approver has approved.
 
-An explicit count is combined with the baseline, never substituted for it. A policy can only raise the bar; there is no setting that waves a change through below the workspace's own floor.
+An explicit count replaces the workspace baseline for the resources the policy governs, whether it is higher or lower. In a workspace with a baseline of 2, a change governed by a policy asking for 1 needs one approval, and a change governed by a policy asking for 3 needs three. There is no count of zero: a policy cannot wave a change through with no approval at all.
+
+The baseline keeps applying to:
+
+- a change no policy governs, and
+- a change whose policies all say `Auto` for that action.
+
+A plan is approved as a whole, so one change on the baseline holds the whole plan to it:
+
+- **Every change governed by an explicit count.** The baseline does not apply. The plan needs only what its policies ask.
+- **A mix.** A plan that changes one resource governed at 1 and one resource no policy covers still needs the baseline. The plan page names the changes holding it there.
+- **A targeted plan.** Targeting a governed module does not guarantee the lower number. If Terraform pulls in a dependency outside the policy, that dependency is on the baseline and so is the plan. The targeted plan picker shows each resource's count before the plan runs, using the action the workspace's current plan has for it, and the total can rise once the plan shows what it really changes.
 
 ### Overlapping policies
 
@@ -84,13 +97,13 @@ Where several policies cover the same change:
 - **The count is the strictest of them.**
 - **Each approver list is satisfied separately.** They are not merged — merging would let a narrow policy dilute a broad one. Two overlapping policies means one approver from each list.
 
-The number shown against a resource is the strictest requirement covering it. Meeting that number does not discharge the other policies' approver lists.
+The number shown against a resource is the strictest requirement covering it: a change governed by policies asking for 1 and 3 needs 3. Meeting that number does not discharge the other policies' approver lists.
 
 ### Named approvers
 
 Being named on a requirement is itself the grant to approve for that policy. Someone named may approve a plan without holding `approve` on the workspace — otherwise a policy could deadlock a workspace it does not administer.
 
-Their approval counts toward that policy's own number, but not toward the workspace baseline. Only an approval from someone who does hold `approve` counts toward that.
+Their approval counts toward that policy's own number, but not toward the workspace baseline. Only an approval from someone who does hold `approve` counts toward that, on any plan the baseline still applies to.
 
 ## Auditing the gate
 

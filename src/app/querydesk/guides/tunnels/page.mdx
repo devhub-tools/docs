@@ -1,0 +1,178 @@
+export const metadata = {
+  title: 'Tunnels',
+  description:
+    'Run a Tunnel inside a private network so Devhub can reach the databases and the Kubernetes cluster in it, without opening anything inbound.',
+}
+
+# Tunnels
+
+A Tunnel is a small program you run inside a private network. It connects out to Devhub, and Devhub uses that connection to reach databases and the Kubernetes API in that network. {{ className: 'lead' }}
+
+## When you need one
+
+You need a Tunnel when Devhub cannot open a connection to the thing it has to reach:
+
+- A QueryDesk database that only accepts connections from inside its own network.
+- A TerraDesk workspace whose jobs must run in a cluster other than the one Devhub runs in. A cloud-hosted Devhub always needs a Tunnel for TerraDesk.
+
+If Devhub can already connect to the database, or the workspace runs in Devhub's own cluster, you do not need a Tunnel.
+
+## What a Tunnel can and cannot do
+
+The Tunnel opens one outbound WebSocket to Devhub. Over that connection it does three things:
+
+1. It opens a TCP connection to a host and port that Devhub names, and relays bytes in both directions.
+2. It relays HTTP requests to the Kubernetes API of the cluster it runs in, using its own service account in its own namespace.
+3. It relays requests from TerraDesk runner jobs in its namespace to Devhub, so a job can send its plan file to Devhub and fetch it back. Devhub serves only those two plan endpoints to requests that arrive this way.
+
+Everything else runs in Devhub:
+
+- The Tunnel has no shell and no database driver.
+- Each database connection through a Tunnel is a single connection. A Postgres cancel request needs a second one, so a canceled Postgres query through a Tunnel is ended by its timeout, not by a cancel request.
+- Database drivers, TLS, and [data protection](/guides/data-protection) run in Devhub. Database credentials and query text stay in Devhub. When the database connection uses TLS, the TLS session is between Devhub and the database, so the Tunnel relays only encrypted bytes. Without TLS, the bytes pass through the Tunnel as the database protocol sends them.
+- TerraDesk decides which jobs to create and reads their logs from Devhub. The Tunnel only forwards those requests to the Kubernetes API, and its Role limits what they can do.
+
+<Warning>
+The Tunnel dials any host and port Devhub asks for. There is no allowlist yet. Use network policy or firewall rules in the Tunnel's network if it should only reach certain hosts.
+</Warning>
+
+## Create a Tunnel
+
+You must be a super admin.
+
+1. Go to **Settings > Tunnels** and add a Tunnel. Give it a name that says which network it is in.
+2. Download its config from the Tunnel's menu.
+
+The config is a JSON file:
+
+```json
+{
+  "tunnel_id": "tnl_...",
+  "endpoint": "https://devhub.example.com",
+  "token": "..."
+}
+```
+
+The token lets the holder connect as this Tunnel. Store the file like any other secret.
+
+## Run it with the Helm chart
+
+The `devhub-tunnel` chart runs the Tunnel in Kubernetes. Use the chart version that matches your Devhub version.
+
+1. Create a secret from the config file. The key must be `config.json`.
+
+    ```bash
+    kubectl create namespace devhub-tunnel
+
+    kubectl create secret generic devhub-tunnel-config \
+      --from-file=config.json=./config.json \
+      --namespace devhub-tunnel
+    ```
+
+2. Install the chart.
+
+    ```bash
+    helm repo add devhub https://devhub-tools.github.io/helm-charts
+
+    helm install devhub-tunnel devhub/devhub-tunnel \
+      --namespace devhub-tunnel
+    ```
+
+3. Check **Settings > Tunnels**. The Tunnel shows as online once it connects.
+
+The chart has three values you are likely to set:
+
+<Properties>
+  <Property name="config.existingSecret" type="string">
+    The secret that holds `config.json`. Defaults to `devhub-tunnel-config`.
+  </Property>
+  <Property name="kubernetes.enabled" type="boolean">
+    Defaults to `true`. The chart creates a Role and RoleBinding in the Tunnel's namespace for jobs, pods, pod logs, and secrets, which TerraDesk needs. Set it to `false` if the Tunnel only reaches databases. The chart then creates no Role, and the pod gets no service account token.
+  </Property>
+  <Property name="caSecret.name" type="string">
+    A secret that holds a CA certificate to trust when connecting to Devhub. Set it if Devhub is served under a private certificate authority. The certificate is read from the key `ca.crt`, or from the key in `caSecret.key`.
+  </Property>
+</Properties>
+
+The Tunnel container runs as a non-root user with a read-only root filesystem and no capabilities. With `kubernetes.enabled`, the chart creates a Service named `devhub-tunnel` that runner jobs in the namespace call. With it off, the Tunnel listens on no port and the chart creates no Service.
+
+## Run it as a container
+
+Outside Kubernetes, run the image and mount the config at `/etc/devhub-tunnel/config.json`. Use the image tag that matches your Devhub version.
+
+```bash
+docker run -d --restart unless-stopped \
+  -v "$(pwd)/config.json:/etc/devhub-tunnel/config.json:ro" \
+  ghcr.io/devhub-tools/devhub-tunnel:<version>
+```
+
+The container runs as user `65532`, so that user must be able to read the config file.
+
+The Tunnel reads four environment variables:
+
+<Properties>
+  <Property name="DEVHUB_TUNNEL_CONFIG" type="string">
+    Path to the config file. Defaults to `/etc/devhub-tunnel/config.json`.
+  </Property>
+  <Property name="DEVHUB_TUNNEL_CA_FILE" type="string">
+    Path to a PEM file with extra CA certificates to trust when connecting to Devhub.
+  </Property>
+  <Property name="DEVHUB_TUNNEL_KUBERNETES" type="string">
+    Set to `false` to turn off access to the Kubernetes API.
+  </Property>
+  <Property name="DEVHUB_TUNNEL_CALLBACK_ADDR" type="string">
+    The address the Tunnel listens on for TerraDesk runner jobs. Defaults to `:8080`. Only used when access to the Kubernetes API is on.
+  </Property>
+</Properties>
+
+A Tunnel that runs outside Kubernetes can reach databases. It cannot run TerraDesk jobs.
+
+## Attach it to a database or a workspace
+
+- **QueryDesk database.** Open the database's settings and choose the Tunnel. Devhub then connects to the database's host and port through that Tunnel, so the host must resolve and be reachable from where the Tunnel runs.
+- **TerraDesk workspace.** Open the workspace's settings and choose the Tunnel. Devhub then runs the workspace's jobs in the Tunnel's namespace. The jobs send their plan file to the Tunnel's Service in that namespace, and the Tunnel relays it to Devhub, so the jobs need no route to Devhub of their own.
+
+With the API or Terraform, set `tunnel_id` on the [database](/resources/databases) or the workspace:
+
+```hcl
+resource "devhub_querydesk_database" "orders" {
+  name      = "orders"
+  adapter   = "POSTGRES"
+  hostname  = "orders-db.internal"
+  database  = "orders"
+  tunnel_id = "tnl_..."
+
+  # credentials and the other settings are unchanged
+}
+```
+
+## Restarts and upgrades
+
+- If Devhub restarts, the Tunnel reconnects within about two seconds.
+- When the Tunnel is asked to stop, it lets open connections finish for up to 25 seconds.
+- Devhub accepts one running instance of each Tunnel. A second instance started with the same config is refused and keeps retrying until the first one stops. The chart runs one pod and, on an upgrade, stops it before starting the new one, so queries and jobs in flight through the Tunnel end when it is replaced.
+- To reach a second network, or to run in a second place, create another Tunnel in **Settings > Tunnels** and give it its own config.
+
+## Replace an agent
+
+Earlier versions of Devhub used an agent, a second copy of Devhub that ran in your network. The Tunnel replaces it. The change is a hard cutover with no period where both work.
+
+After you upgrade Devhub:
+
+- An agent deployment can no longer connect.
+- Databases and workspaces that used an agent are offline until its Tunnel is running.
+- Each agent appears in **Settings > Tunnels** as a Tunnel. Databases and workspaces keep the Tunnel they had, so you do not attach anything again.
+- Old agent configs stop working. You must download a new config for each Tunnel.
+
+To move over:
+
+1. Upgrade Devhub.
+2. In **Settings > Tunnels**, download a new config for each Tunnel.
+3. Remove the agent deployment. If you installed it with the `devhub` chart and `devhub.agent=true`, uninstall that release. The chart no longer has that value.
+4. Run the Tunnel with the new config, using the [Helm chart](#run-it-with-the-helm-chart) or a [container](#run-it-as-a-container).
+5. Confirm the Tunnel is online in **Settings > Tunnels**, then run a query or a plan through it.
+
+If you manage Devhub with the API or Terraform:
+
+- The `agent_id` field on databases and workspaces is now `tunnel_id`. There is no alias.
+- Upgrade the Terraform provider at the same time as Devhub, and rename `agent_id` to `tunnel_id` in your configuration. An older provider still sends `agent_id`. The API ignores it, which removes the Tunnel from that database or workspace on the next apply.

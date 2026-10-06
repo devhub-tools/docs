@@ -50,7 +50,7 @@ All of these endpoints require an API key with **full access**. See [Authenticat
     Whether pushes and pull requests queue plans for apply automatically. Defaults to `false`.
   </Property>
   <Property name="required_approvals" type="integer">
-    The baseline number of approvals every apply on this workspace must have. Defaults to `0`.
+    The baseline number of approvals for resource changes no resource policy sets a count for. A resource policy with an explicit count replaces it for the resources it governs. Defaults to `0`.
   </Property>
   <Property name="cpu_requests" type="string">
     CPU requested for the run's pod, in Kubernetes units. Defaults to `100m`.
@@ -67,8 +67,8 @@ All of these endpoints require an API key with **full access**. See [Authenticat
   <Property name="workload_identity" type="object">
     Google workload identity configuration: `enabled`, `service_account_email`, and `provider`.
   </Property>
-  <Property name="agent_id" type="string">
-    The agent that runs this workspace's jobs, for infrastructure in a cluster Devhub cannot reach directly.
+  <Property name="tunnel_id" type="string">
+    The [Tunnel](https://docs.querydesk.com/guides/tunnels) this workspace's jobs run through, for infrastructure in a cluster Devhub cannot reach directly.
   </Property>
   <Property name="slack_channel" type="string">
     Where a plan posts when it reaches `planned` and is waiting on a human.
@@ -158,7 +158,7 @@ All of these endpoints require an API key with **full access**. See [Authenticat
       "env_vars": [],
       "secrets": [],
       "workload_identity": null,
-      "agent_id": null,
+      "tunnel_id": null,
       "slack_channel": null,
       "slack_notify_on": "all_plans",
       "drift_detection_enabled": false,

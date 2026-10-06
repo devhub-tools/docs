@@ -135,9 +135,9 @@ projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/provid
 
 See the [Terraform provider docs](https://registry.terraform.io/providers/devhub-tools/devhub/latest/docs/resources/terradesk_workspace) for a complete example including the Google resources.
 
-## Agents
+## Tunnels
 
-By default a workspace's Jobs run in the same cluster as Devhub. When the infrastructure you are managing lives somewhere Devhub cannot reach — a separate cluster, a different account, an isolated network — assign the workspace an **agent**. The agent runs in that cluster, opens an outbound connection to Devhub, and runs the workspace's Jobs there. Nothing inbound to that cluster has to be opened.
+By default a workspace's Jobs run in the same cluster as Devhub. When the infrastructure you are managing lives somewhere Devhub cannot reach, such as a separate cluster, a different account, or an isolated network, assign the workspace a [Tunnel](https://docs.querydesk.com/guides/tunnels). The Tunnel runs in that cluster and opens an outbound connection to Devhub. Devhub creates the workspace's Jobs in the Tunnel's namespace through the Tunnel's service account. Nothing inbound to that cluster has to be opened.
 
 ## Notifications
 

@@ -80,6 +80,20 @@ DO $$ ... $$;
 CALL some_procedure();
 ```
 
+Functions that run SQL held in a string, or read a table named in one or on another server, are refused as well, because what they return never passes through the rewriter. The functions refused are the known ones on each engine, along with any function whose name starts with one of them:
+
+- **Postgres**: `query_to_xml`, `table_to_xml`, `schema_to_xml`, `database_to_xml`, `cursor_to_xml`, `dblink`, `ts_stat`, `ts_rewrite`, `crosstab`, `connectby`, `xpath_table`
+- **Oracle**: `DBMS_XMLGEN.getxml`, `getxmltype` and `newcontext`
+- **SQL Server**: `OPENQUERY`, `OPENROWSET`, `OPENDATASOURCE`
+- **ClickHouse**: `remote`, `remoteSecure`, `cluster`, `clusterAllReplicas`, `merge`, `view`, `mysql`, `postgresql`, `url`, `file`, `s3`, `jdbc`, `odbc`
+
+A function added by an extension that is not on this list is not refused, so review the extensions installed on a protected database.
+
+```sql
+SELECT query_to_xml('select ssn from users', true, false, '');
+-- Function 'query_to_xml' runs SQL or reads a table by name, so it can't be masked
+```
+
 A redacted column also can't decide which rows come back or what they add up to. Masked inside a `WHERE`, `HAVING` or `JOIN ... ON`, any comparison (`CASE WHEN`, `IN`, `BETWEEN`, `IS NULL`), a `GROUP BY`, `ORDER BY` or `DISTINCT`, an aggregate such as `count` or `max`, or a `UNION` that removes duplicates, it would make the result silently wrong: `'***' = '***'` matches every pair of rows, `'***' = 'x'` matches none, and `count(DISTINCT '***')` is always 1. So the statement is refused with an error naming the column:
 
 ```sql
@@ -87,7 +101,17 @@ SELECT id FROM users WHERE ssn = '123-45-6789';
 -- Column 'users.ssn' is redacted, so it can't be used to filter, join or compare rows
 ```
 
-Show the column in the policy, or filter on one that is shown.
+A column keeps its redaction when a CTE or a subquery in `FROM` returns it under another name, so filtering on that output is refused too. The error names the table column behind the output, since that is the one a policy lists, and the output it reached the filter through:
+
+```sql
+WITH recent AS (SELECT id, ssn AS tax_id FROM users)
+SELECT id FROM recent WHERE tax_id = '123-45-6789';
+-- Column 'users.ssn' is redacted, and 'recent.tax_id' is computed from it, so 'recent.tax_id' can't be used to filter, join or compare rows
+```
+
+The column named in the error is the one to show in the policy. Otherwise, filter on a column that is shown.
+
+In the QueryDesk web UI the Data protection panel opens on a query refused this way, as it does on one that ran. It shows the query as it would have been rewritten and every column it referenced, and the redacted column can be requested there. The query itself is not run.
 
 Session and transaction statements carry no row data, so they still pass through unchanged and drivers keep working: `SET`, `SHOW`, `RESET`, `BEGIN`, `COMMIT`, and `ROLLBACK`.
 
@@ -105,6 +129,23 @@ information_schema
 ```
 
 Allowlisted tables bypass masking entirely, so only add catalogs you have confirmed do not surface protected data. The allowlist is per policy, so one role can be granted catalog access without widening it for everyone.
+
+## Inherited Policies
+
+A policy can be put in effect on other databases with **Add inherited database**, which is how a replica is kept redacted exactly like its primary. The inherited policy has no actions of its own. Each time it is used, a column takes the action the source policy gives the column with the same table and column name (on Postgres, the same schema too), and the source policy's allowed system tables apply.
+
+A change to the source policy, by hand or through an auto apply rule on the source database, is in effect on every inheriting database on the next query. Nothing has to be synced or edited on the inheriting side.
+
+On an inheriting database a column is hidden when:
+
+- the source database has no column with that table and column name, or
+- the source policy has not given the column an action.
+
+A column that is added to an inheriting database later takes the source policy's action once the database's schema is synced.
+
+Auto apply rules created on the inheriting database do not change its inherited policies. Create the rule on the source database instead.
+
+Access requests from people governed by an inherited policy are reviewed on the source policy's page, where each request shows the database it was made on. Approving one shows the column on the source database and on every inheriting database that has it. A column the source database does not have cannot be requested.
 
 ## Policy Assignment and Evaluation
 Data protection policies can be assigned to individual users or roles. The system evaluates policies in the following order:

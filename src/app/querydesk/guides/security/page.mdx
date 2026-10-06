@@ -20,7 +20,9 @@ Devhub is one container image plus a PostgreSQL database. You deploy it with a [
 - The Devhub database is yours. The chart can create one with CloudNativePG, or use one you already operate.
 - Devhub has no network path into your install. There is no support tunnel, no channel that phones home with your data, and no vendor access to your database.
 
-A cloud-hosted option also exists. If the databases you want to reach sit inside a private network, an **agent** runs in that network and opens an **outbound** connection to Devhub. Nothing inbound is opened, and the connection to the database is made from inside your network.
+A cloud-hosted option also exists. If the databases you want to reach sit inside a private network, a [Tunnel](/guides/tunnels) runs in that network and opens an **outbound** connection to Devhub. Nothing inbound is opened.
+
+The Tunnel opens a TCP connection to the database and relays bytes. The database driver, TLS, and data protection run in Devhub, so database credentials and query text stay in Devhub. When the database connection uses TLS, the Tunnel relays only encrypted bytes.
 
 ## Credentials are never handed out
 
@@ -68,7 +70,13 @@ So revoking a role or editing the SQL voids approvals retroactively. An approved
 
 Every query records its SQL, when it ran, the **person** who ran it, and the **credential** it ran through. Those last two are kept separate on purpose. The person is who is accountable; the database user is what your database's own logs will show. That is the join you need when a database log points at a shared login rather than a name.
 
+Each approval on a query is named with the person who gave it and the time they gave it, oldest first. A bypass is listed as a bypass, with the super admin who made it, and never as an approval. Anyone in the organization who can see the entry can see who approved it, and the names stay after an approver leaves.
+
 Queries written by AI are labelled with their source, whether that was a person, the in-app chat, or an external MCP client. An AI-authored statement is never indistinguishable from a hand-written one.
+
+Super admins and members with the **Auditor** permission see every query in the audit log. Everyone else sees only the queries they ran or approved, and the page tells them so. An AI assistant that calls `search_audit_log` for a member gets the same queries that member would see.
+
+A super admin grants Auditor on a member in Settings > Users, or on a role. New members start without it. Super admins see the full log without holding Auditor, so grant it before you remove super admin from someone who should keep the full log. Removing Auditor hides other members' queries from that member. It deletes nothing.
 
 ## Sensitive data never leaves your database
 
@@ -129,7 +137,7 @@ Every key has a permission set and an optional expiry, and the permission is che
 - **The organization is the boundary.** Every record is scoped by `organization_id`, and so is every query.
 - **Permissions are layered.** A check resolves as `super_admin` bypass → organization-wide role bypass → a per-object grant.
 - **Grants are per resource.** A permission ties an action, such as `approve` on one database, to a user or a role.
-- **A role can also grant organization permissions.** A super admin can give a role super admin, manager or billing admin, and everyone in the role holds it for as long as they are in it. With a groups claim, that lets a directory group make its members super admins, and leaving the group ends it at their next sign-in. Taking a permission off a role never clears a member's own box.
+- **A role can also grant organization permissions.** A super admin can give a role super admin, auditor, manager or billing admin. Everyone in the role holds that permission while they are in the role. If roles come from a groups claim, a directory group can make its members super admins this way, and a member who leaves the group loses the permission at their next sign-in. Removing a permission from a role does not change the permissions set on a member directly.
 - **Membership is archived, not deleted**, so old queries and approvals still resolve to a person.
 
 ## AI access is opt-in

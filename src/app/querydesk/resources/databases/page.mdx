@@ -58,14 +58,17 @@ The database model contains all the information about your database connections,
   <Property name="slack_channel" type="string">
     The Slack channel to send query request notifications to.
   </Property>
-  <Property name="agent_id" type="string">
-    The agent ID for connecting to databases inside private networks.
+  <Property name="tunnel_id" type="string">
+    The ID of the [Tunnel](/guides/tunnels) used to connect to databases inside private networks.
   </Property>
   <Property name="ai_enabled" type="boolean">
     Whether the AI agent may use this database. Defaults to `false` (opt-in). See [AI Governance](/ai/governance).
   </Property>
   <Property name="ai_max_rows" type="integer">
     The maximum number of rows the AI agent's queries may return against this database. Defaults to `500`.
+  </Property>
+  <Property name="connection_parameters" type="array">
+    The names and values a PostgreSQL database receives when a connection opens, in order. Each item has a `name` and a `value`, for example `pgdog.role` and `replica`. Every credential on the database sends them. Other database types send none.
   </Property>
   <Property name="credentials" type="array">
     Array of database credentials with connection details. Each credential includes `ai_allowed` (whether the AI may run as it) and `timeout`.
@@ -131,14 +134,17 @@ The database model contains all the information about your database connections,
       <Property name="slack_channel" type="string">
         The Slack channel to send query request notifications to.
       </Property>
-      <Property name="agent_id" type="string">
-        The agent ID for connecting to databases inside private networks.
+      <Property name="tunnel_id" type="string">
+        The ID of the [Tunnel](/guides/tunnels) used to connect to databases inside private networks.
       </Property>
       <Property name="ai_enabled" type="boolean">
         Whether the AI agent may use this database. Defaults to `false` (opt-in).
       </Property>
       <Property name="ai_max_rows" type="integer">
         The maximum number of rows the AI agent's queries may return. Defaults to `500`.
+      </Property>
+      <Property name="connection_parameters" type="array">
+        The names and values a PostgreSQL database receives when a connection opens, as a list of `{"name": ..., "value": ...}`. The list replaces the one stored, and an empty list clears it. A name can't be `user` or `database`.
       </Property>
     </Properties>
 
@@ -188,9 +194,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": null,
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",
@@ -246,9 +253,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": null,
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",
@@ -366,14 +374,17 @@ The database model contains all the information about your database connections,
       <Property name="slack_channel" type="string">
         The Slack channel to send query request notifications to.
       </Property>
-      <Property name="agent_id" type="string">
-        The agent ID for connecting to databases inside private networks.
+      <Property name="tunnel_id" type="string">
+        The ID of the [Tunnel](/guides/tunnels) used to connect to databases inside private networks.
       </Property>
       <Property name="ai_enabled" type="boolean">
         Whether the AI agent may use this database. Defaults to `false` (opt-in).
       </Property>
       <Property name="ai_max_rows" type="integer">
         The maximum number of rows the AI agent's queries may return. Defaults to `500`.
+      </Property>
+      <Property name="connection_parameters" type="array">
+        The names and values a PostgreSQL database receives when a connection opens, as a list of `{"name": ..., "value": ...}`. The list replaces the one stored, and an empty list clears it. A name can't be `user` or `database`.
       </Property>
       <Property name="credentials" type="array">
         Array of database credentials with connection details. Set `ai_allowed` on a credential to let the AI run as it.
@@ -412,9 +423,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": "#db-alerts",
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",
@@ -471,9 +483,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": "Production",
       "slack_channel": "#db-alerts",
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",
@@ -537,8 +550,8 @@ The database model contains all the information about your database connections,
       <Property name="group" type="string">
         The group this database belongs to, used for UI grouping.
       </Property>
-      <Property name="agent_id" type="string">
-        The agent ID for connecting to databases inside private networks.
+      <Property name="tunnel_id" type="string">
+        The ID of the [Tunnel](/guides/tunnels) used to connect to databases inside private networks.
       </Property>
       <Property name="ssl" type="string">
         Set to "enabled" to enable SSL for the connection.
@@ -601,9 +614,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": null,
       "slack_channel": null,
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",
@@ -661,9 +675,10 @@ The database model contains all the information about your database connections,
       "review_bypass_allowed": false,
       "group": null,
       "slack_channel": null,
-      "agent_id": null,
+      "tunnel_id": null,
       "ai_enabled": false,
       "ai_max_rows": 500,
+      "connection_parameters": [],
       "credentials": [
         {
           "id": "crd_xyz789",

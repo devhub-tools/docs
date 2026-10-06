@@ -20,7 +20,7 @@ Devhub is one container image plus a PostgreSQL database. You deploy it with a [
 - The database is yours. The chart can create one with CloudNativePG, or use one you already operate.
 - Devhub has no network path into your install. There is no support tunnel, no channel that phones home with your data, and no vendor access to your database.
 
-A cloud-hosted option also exists, where the app itself runs in Devhub's cluster. **TerraDesk requires an agent in that mode.** A workspace on a cloud-hosted install cannot run jobs in Devhub's cluster, so your Terraform still runs in your own infrastructure, against credentials that stay there.
+A cloud-hosted option also exists, where the app itself runs in Devhub's cluster. **TerraDesk requires a [Tunnel](https://docs.querydesk.com/guides/tunnels) in that mode.** A workspace on a cloud-hosted install cannot run jobs in Devhub's cluster, so your Terraform still runs in your own infrastructure, against credentials that stay there.
 
 ## How a Terraform run is isolated
 
@@ -68,7 +68,7 @@ The repository is cloned shallow, at the one branch the run is for. It uses a **
 
 ### Credentials
 
-Workspace secrets are encrypted at rest (see [Encryption](#encryption)) and decrypted only while a run is being prepared. They go into a Kubernetes Secret in Devhub's namespace, written just before the Job starts, and reach the containers through `envFrom`. A secret value never appears in the Job manifest, in an image, or on disk in the workspace volume.
+Workspace secrets are encrypted at rest (see [Encryption](#encryption)) and decrypted only while a run is being prepared. They go into a Kubernetes Secret in Devhub's namespace, written just before the Job starts, and reach the containers through `envFrom`. For a workspace with a Tunnel, the Secret goes into the Tunnel's namespace. A secret value never appears in the Job manifest, in an image, or on disk in the workspace volume.
 
 On Google Cloud, [workload identity](/guides/workspaces#workload-identity) removes the credential altogether. TerraDesk mints a short-lived token for the run's service account and exchanges it for an access token on the service account you name, so no long-lived cloud key is stored anywhere in the install.
 
@@ -77,7 +77,7 @@ On Google Cloud, [workload identity](/guides/workspaces#workload-identity) remov
 A plan and the apply that follows it are two separate Jobs, so `plan.out` has to move between them. It moves through Devhub, and the address the runner calls is worked out rather than configured:
 
 - A runner in Devhub's own namespace calls `http://devhub.<namespace>.svc.cluster.local`, an in-cluster address. The plan file never touches your public hostname, never crosses whatever terminates TLS at your edge, and is unaffected by an identity-aware proxy in front of the app.
-- A runner belonging to an **agent** calls the public endpoint it was configured with, because that is the only way it can reach Devhub at all.
+- A runner started through a **Tunnel** calls the Tunnel's Service in its own namespace, and the Tunnel relays the request to Devhub over the connection it already holds. Devhub serves only the plan upload and download to requests that arrive this way.
 
 Both calls carry a token scoped to that one plan and valid for four hours. The endpoints accept nothing else.
 
@@ -87,7 +87,9 @@ Both calls carry a token scoped to that one plan and valid for four hours. The e
 
 ### Runs in another cluster
 
-When the infrastructure lives somewhere Devhub cannot reach, give the workspace an **agent**. The agent runs in that cluster and opens an **outbound** WebSocket to Devhub, authenticated with a signed token. Nothing inbound to your cluster is opened, and the credentials its Terraform uses stay in it.
+When the infrastructure lives somewhere Devhub cannot reach, give the workspace a [Tunnel](https://docs.querydesk.com/guides/tunnels). The Tunnel runs in that cluster and opens an **outbound** WebSocket to Devhub, authenticated with a token. Nothing inbound to your cluster is opened.
+
+Job orchestration runs in Devhub. Devhub creates the Job, writes its Secret, and reads Pod status and logs by sending Kubernetes API requests through the Tunnel. The Tunnel relays them under its own service account, in its own namespace. That service account's Role is namespace-scoped and covers Jobs, Pods, Pod logs, and Secrets, so that is the limit of what Devhub can do in the cluster.
 
 ## What decides that a change may apply
 
@@ -95,7 +97,7 @@ The [apply gate](/guides/approvals) is where change control happens, and it is b
 
 - **Approvals name a person.** Each one records the user who approved and the time they did it.
 - **The requirement can be rechecked.** Every plan stores the resource changes it proposed, so you can recompute what it needed rather than take it on trust.
-- **Policies only raise the bar.** A [resource policy](/guides/approvals#resource-policies) can demand more approvals, or specific approvers, for certain resources and actions. No setting lets a policy wave a change through below the workspace baseline.
+- **Policies set the count per resource.** A [resource policy](/guides/approvals#resource-policies) can demand specific approvers, or an approval count of its own, for certain resources and actions. An explicit count replaces the workspace baseline for the resources the policy governs, and no policy can set it to zero.
 - **Nothing is deleted.** Plans and approvals are permanent. Workspaces are archived rather than removed, and releasing a reservation records who did it and when.
 - **Only one apply can start.** A plan moves into applying under a row lock, so it can never have two apply jobs running, and the plans it invalidates are canceled in the same transaction.
 - **A drift run can never apply.** [Drift detection](/guides/drift-detection) is refresh-only. Fixing drift goes through an ordinary plan and the full gate.
@@ -128,7 +130,7 @@ Every key has a permission set and an optional expiry, and the permission is che
 - **The organization is the boundary.** Every record is scoped by `organization_id`, and so is every query.
 - **Permissions are layered.** A check resolves as `super_admin` bypass → organization-wide role bypass → a per-object grant.
 - **Grants are per resource.** A permission ties an action, such as `approve` on one workspace, to a user or a role. Being able to see something never implies being able to act on it.
-- **A role can also grant organization permissions.** A super admin can give a role super admin, manager or billing admin, and everyone in the role holds it for as long as they are in it. With a groups claim, that lets a directory group make its members super admins, and leaving the group ends it at their next sign-in. Taking a permission off a role never clears a member's own box.
+- **A role can also grant organization permissions.** A super admin can give a role super admin, auditor, manager or billing admin. Everyone in the role holds that permission while they are in the role. If roles come from a groups claim, a directory group can make its members super admins this way, and a member who leaves the group loses the permission at their next sign-in. Removing a permission from a role does not change the permissions set on a member directly.
 - **Membership is archived, not deleted**, so old approvals still resolve to a person.
 
 ## Encryption

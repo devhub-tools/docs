@@ -51,6 +51,7 @@ export const sites: Record<SiteId, Site> = {
           { title: 'Seat Automation', href: '/guides/seat-automation' },
           { title: 'Workflows', href: '/guides/workflows' },
           { title: 'Data Protection', href: '/guides/data-protection' },
+          { title: 'Tunnels', href: '/guides/tunnels' },
           { title: 'Security', href: '/guides/security' },
         ],
       },
@@ -109,6 +110,12 @@ export const sites: Record<SiteId, Site> = {
           name: 'Data Protection',
           description:
             'Learn how QueryDesk implements data protection to simplify meeting compliance requirements.',
+        },
+        {
+          href: '/guides/tunnels',
+          name: 'Tunnels',
+          description:
+            'Reach databases and clusters in a private network without opening anything inbound.',
         },
         {
           href: '/guides/security',
